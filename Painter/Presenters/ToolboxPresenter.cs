@@ -14,6 +14,7 @@ namespace Painter.Presenters
             _view = view;
             _settingsModel = settingsModel;
             SubscribeToEvents();
+            SubscribeToSettingsEvents();
         }
 
         private void SubscribeToEvents()
@@ -21,6 +22,22 @@ namespace Painter.Presenters
             _view!.BrushSelected += OnBrushSelected;
             _view!.PencilSelected += OnPencilSelected;
             _view!.EraserSelected += OnEraserSelected;
+        }
+
+        private void SubscribeToSettingsEvents()
+        {
+            if (_settingsModel != null)
+            {
+                _settingsModel.ToolChanged += OnToolChanged;
+            }
+        }
+
+        public void OnToolChanged()
+        {
+            if (_settingsModel != null && _view != null)
+            {
+                _view.SetActiveTool(_settingsModel.CurrentTool);
+            }
         }
 
         public void OnBrushSelected(object? sender, EventArgs e)

@@ -70,5 +70,10 @@ namespace Painter.Views
         {
             EraserSelected?.Invoke(this, EventArgs.Empty);
         }
+
+        public void SetActiveTool(ToolType toolType)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

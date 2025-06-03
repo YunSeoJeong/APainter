@@ -81,5 +81,15 @@ namespace Painter.Views
                 }
             }
         }
+
+        public void UpdateLayerList(List<string> layerNames)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ShowError(string message)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

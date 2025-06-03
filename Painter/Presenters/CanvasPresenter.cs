@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Painter.Interfaces;
 using Painter.Models;
+using Painter.Strategies;
 
 namespace Painter.Presenters
 {
@@ -11,13 +12,17 @@ namespace Painter.Presenters
         private readonly ICanvasView _view;
         private readonly IBitmapModel _bitmapModel;
         private readonly IPainterSettingsModel _settingsModel;
+        private readonly IToolStrategyFactory _toolStrategyFactory;
         private Point? _lastPoint;
 
-        public CanvasPresenter(ICanvasView view, IBitmapModel bitmapModel, IPainterSettingsModel settingsModel)
+        public CanvasPresenter(ICanvasView view, IBitmapModel bitmapModel, 
+                              IPainterSettingsModel settingsModel, 
+                              IToolStrategyFactory toolStrategyFactory)
         {
             _view = view;
             _bitmapModel = bitmapModel;
             _settingsModel = settingsModel;
+            _toolStrategyFactory = toolStrategyFactory;
 
             _view.MouseDownEvent += OnMouseDown;
             _view.MouseMoveEvent += OnMouseMove;
@@ -33,59 +38,30 @@ namespace Painter.Presenters
         {
             if (_lastPoint.HasValue && e.Button == MouseButtons.Left)
             {
-                DrawLine(e.Location, _settingsModel.CurrentTool);
-                _lastPoint = e.Location;
+                _bitmapModel.Lock();
+                try
+                {
+                    var toolStrategy = _toolStrategyFactory.CreateToolStrategy(_settingsModel.CurrentTool);
+                    var context = new DrawingContext(
+                        _lastPoint.Value, 
+                        e.Location,
+                        _settingsModel.PrimaryColor,
+                        _settingsModel.BrushSize,
+                        (x, y, color) => _bitmapModel.SetPixel(x, y, color)
+                    );
+                    toolStrategy.Draw(context);
+                }
+                finally
+                {
+                    _bitmapModel.Unlock();
+                    UpdateView();
+                }
             }
         }
 
         public void OnMouseUp(object? sender, MouseEventArgs e)
         {
             _lastPoint = null;
-        }
-
-        private void DrawLine(Point currentPoint, ToolType toolType)
-        {
-            if (!_lastPoint.HasValue) return;
-
-            _bitmapModel.Lock();
-            try
-            {
-                switch (toolType)
-                {
-                    case ToolType.Brush:
-                        DrawLine(currentPoint, _settingsModel.PrimaryColor, _settingsModel.BrushSize);
-                        break;
-                    case ToolType.Pencil:
-                        DrawLine(currentPoint, Color.Black, 1);
-                        break;
-                    case ToolType.Eraser:
-                        DrawLine(currentPoint, Color.White, _settingsModel.BrushSize);
-                        break;
-                }
-            }
-            finally
-            {
-                _bitmapModel.Unlock();
-                UpdateView();
-            }
-        }
-
-        private void DrawLine(Point currentPoint, Color color, int size)
-        {
-            // 선 그리기 로직 구현 (간소화)
-            int x1 = _lastPoint!.Value.X;
-            int y1 = _lastPoint!.Value.Y;
-            int x2 = currentPoint.X;
-            int y2 = currentPoint.Y;
-
-            // 실제 선 그리기 알고리즘 구현 필요
-            for (int i = 0; i < size; i++)
-            {
-                for (int j = 0; j < size; j++)
-                {
-                    _bitmapModel.SetPixel(x2 + i, y2 + j, color);
-                }
-            }
         }
 
         public void UpdateView()

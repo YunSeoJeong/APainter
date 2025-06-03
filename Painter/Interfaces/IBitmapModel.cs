@@ -11,6 +11,7 @@ namespace Painter.Interfaces
         void SetPixel(int x, int y, Color color);
         Color GetPixel(int x, int y);
         void Clear(Color color);
-        
+        int Width { get; }
+        int Height { get; }
     }
 }

@@ -11,17 +11,35 @@ namespace Painter.Models
         private int _brushSize = 5;
         
         public event Action? ToolChanged;
+        public event Action? PrimaryColorChanged;
+        public event Action? BrushSizeChanged;
         
         public ToolType CurrentTool => _currentTool;
+        
         public Color PrimaryColor
         {
             get => _primaryColor;
-            set => _primaryColor = value;
+            set
+            {
+                if (_primaryColor != value)
+                {
+                    _primaryColor = value;
+                    PrimaryColorChanged?.Invoke();
+                }
+            }
         }
+        
         public int BrushSize
         {
             get => _brushSize;
-            set => _brushSize = value;
+            set
+            {
+                if (_brushSize != value)
+                {
+                    _brushSize = value;
+                    BrushSizeChanged?.Invoke();
+                }
+            }
         }
         
         public void SetTool(ToolType tool)

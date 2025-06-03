@@ -28,23 +28,37 @@ namespace Painter.Presenters
 
         public void OnAddLayerClicked(object? sender, EventArgs e)
         {
-            // 새 레이어 생성 (기본 크기 800x600)
-            // TODO 현재 캔버스 크기에 맞추어 레이어 생성
-            var newLayer = new Bitmap(800, 600);
-            using (var g = Graphics.FromImage(newLayer))
+            try
             {
-                g.Clear(Color.Transparent);
+                // 현재 캔버스 크기에 맞추어 레이어 생성
+                var newLayer = new Bitmap(_bitmapModel.Width, _bitmapModel.Height);
+                using (var g = Graphics.FromImage(newLayer))
+                {
+                    g.Clear(Color.Transparent);
+                }
+                
+                _layers.Add(newLayer);
+                UpdateLayerList();
             }
-            
-            _layers.Add(newLayer);
-            UpdateLayerList();
+            catch (Exception ex)
+            {
+                // 표준화된 오류 처리
+                _view.ShowError($"레이어 추가 실패: {ex.Message}");
+            }
         }
 
         private void UpdateLayerList()
         {
-            // 레이어 이름 목록 생성
-            var layerNames = _layers.Select((_, index) => $"Layer {index + 1}").ToList();
-            _view.UpdateLayerList(layerNames);
+            try
+            {
+                // 레이어 이름 목록 생성
+                var layerNames = _layers.Select((_, index) => $"레이어 {index + 1}").ToList();
+                _view.UpdateLayerList(layerNames);
+            }
+            catch (Exception ex)
+            {
+                _view.ShowError($"레이어 목록 업데이트 실패: {ex.Message}");
+            }
         }
     }
 }
