@@ -1,34 +1,60 @@
 using System.Drawing;
-using System;
+using System.Drawing.Imaging;
+using System.IO;
 
 namespace Painter.Models
 {
-    // Models
     public class FileModel
     {
-        private string _filePath; // 파일 경로
-
-        /// <summary>
-        /// FileModel 생성자
-        /// </summary>
-        /// <param name="filePath">파일 경로</param>
-        public FileModel(string filePath)
+        public void SaveToFile(Bitmap bitmap, string filePath)
         {
-            _filePath = filePath;
+            if (bitmap == null)
+                throw new ArgumentNullException(nameof(bitmap));
+            
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be empty", nameof(filePath));
+
+            try
+            {
+                ImageFormat format = GetImageFormat(filePath);
+                bitmap.Save(filePath, format);
+            }
+            catch (Exception ex)
+            {
+                throw new IOException($"Failed to save image: {ex.Message}", ex);
+            }
         }
 
-        /// <summary>
-        /// Bitmap 데이터를 파일로 저장
-        /// </summary>
-        /// <param name="bitmap">Bitmap 데이터</param>
-        /// <param name="filePath">파일 경로</param>
-        public void SaveToFile(Bitmap bitmap, string filePath) { throw new NotImplementedException(); }
+        public Bitmap LoadFromFile(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be empty", nameof(filePath));
 
-        /// <summary>
-        /// 파일에서 Bitmap 데이터 불러오기
-        /// </summary>
-        /// <param name="filePath">파일 경로</param>
-        /// <returns>Bitmap 데이터</returns>
-        public Bitmap LoadFromFile(string filePath) { throw new NotImplementedException(); }
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException("Image file not found", filePath);
+
+            try
+            {
+                return new Bitmap(filePath);
+            }
+            catch (Exception ex)
+            {
+                throw new IOException($"Failed to load image: {ex.Message}", ex);
+            }
+        }
+
+        private ImageFormat GetImageFormat(string filePath)
+        {
+            string extension = Path.GetExtension(filePath).ToLower();
+            return extension switch
+            {
+                ".jpg" or ".jpeg" => ImageFormat.Jpeg,
+                ".png" => ImageFormat.Png,
+                ".bmp" => ImageFormat.Bmp,
+                ".gif" => ImageFormat.Gif,
+                ".tiff" => ImageFormat.Tiff,
+                _ => throw new NotSupportedException($"Unsupported file format: {extension}")
+            };
+        }
     }
 }

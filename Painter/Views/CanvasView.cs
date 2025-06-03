@@ -1,39 +1,57 @@
-using Painter.Presenters;
 using System;
+using System.Drawing;
 using System.Windows.Forms;
+using Painter.Interfaces;
+using Painter.Presenters;
 
 namespace Painter.Views
 {
-    public class CanvasView
+    public class CanvasView : UserControl, ICanvasView
     {
-        // 필드
-        private CanvasPresenter _canvasPresenter; // 그림 영역 Presenter
-        private PictureBox _pictureBox; // 그림 표시 영역
+        public PictureBox PictureBox { get; private set; }
+        public event MouseEventHandler MouseDownEvent;
+        public event MouseEventHandler MouseMoveEvent;
+        public event MouseEventHandler MouseUpEvent;
 
-        /// <summary>
-        /// UI 초기화
-        /// </summary>
-        public void InitializeComponent() { throw new NotImplementedException(); }
+        private CanvasPresenter _presenter;
 
-        /// <summary>
-        /// 마우스 다운 이벤트 처리
-        /// </summary>
-        /// <param name="sender">이벤트 발생 객체</param>
-        /// <param name="e">이벤트 인자</param>
-        public void OnMouseDown(object sender, MouseEventArgs e) { throw new NotImplementedException(); }
+        public CanvasView()
+        {
+            Initialize();
+        }
 
-        /// <summary>
-        /// 마우스 이동 이벤트 처리
-        /// </summary>
-        /// <param name="sender">이벤트 발생 객체</param>
-        /// <param name="e">이벤트 인자</param>
-        public void OnMouseMove(object sender, MouseEventArgs e) { throw new NotImplementedException(); }
+        public void Initialize()
+        {
+            PictureBox = new PictureBox
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                SizeMode = PictureBoxSizeMode.Zoom
+            };
 
-        /// <summary>
-        /// 마우스 업 이벤트 처리
-        /// </summary>
-        /// <param name="sender">이벤트 발생 객체</param>
-        /// <param name="e">이벤트 인자</param>
-        public void OnMouseUp(object sender, MouseEventArgs e) { throw new NotImplementedException(); }
+            // 마우스 이벤트 핸들러 연결
+            PictureBox.MouseDown += (s, e) => MouseDownEvent?.Invoke(s, e);
+            PictureBox.MouseMove += (s, e) => MouseMoveEvent?.Invoke(s, e);
+            PictureBox.MouseUp += (s, e) => MouseUpEvent?.Invoke(s, e);
+
+            Controls.Add(PictureBox);
+        }
+
+        public void SetPresenter(CanvasPresenter presenter)
+        {
+            _presenter = presenter;
+        }
+
+        public void SetBitmap(Bitmap bitmap)
+        {
+            if (PictureBox.InvokeRequired)
+            {
+                PictureBox.Invoke(new Action(() => PictureBox.Image = bitmap));
+            }
+            else
+            {
+                PictureBox.Image = bitmap;
+            }
+        }
     }
 }

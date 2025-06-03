@@ -1,16 +1,23 @@
-namespace Painter;
+using System;
+using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 
-static class Program
+namespace Painter
 {
-    /// <summary>
-    ///  The main entry point for the application.
-    /// </summary>
-    [STAThread]
-    static void Main()
+    static class Program
     {
-        // To customize application configuration such as set high DPI settings or default font,
-        // see https://aka.ms/applicationconfiguration.
-        ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm());
-    }    
+        [STAThread]
+        static void Main()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            
+            // DI 컨테이너 설정
+            var serviceProvider = DependencyInjection.ConfigureServices();
+            
+            // 메인 폼 실행
+            var mainForm = serviceProvider.GetRequiredService<MainForm>();
+            Application.Run(mainForm);
+        }
+    }
 }
