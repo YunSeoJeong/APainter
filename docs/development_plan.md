@@ -1,20 +1,22 @@
 # APainter 개발 계획 (인터페이스 구현 로드맵)
 
-## 3. 할 일 목록 (최종 업데이트)
+## 3. 할 일 목록 (2025-06-03 업데이트)
 
 ### 3.1. 인터페이스 구현 (우선순위: 높음)
-*   [x] 핵심 인터페이스 정의 (IView, ICanvasView, IToolboxView)
-*   [x] 모델 인터페이스 정의 (IBitmapModel, IFileModel)
+*   [x] 핵심 인터페이스 정의 (IView, IMainView, ICanvasView, IToolboxView)
+*   [x] 확장 인터페이스 정의 (ILayerManagerView, IMenuView)
+*   [x] 모델 인터페이스 정의 (IBitmapModel, IFileModel, IComfyUIModel)
 *   [x] 설정 모델 인터페이스 추가 (IPainterSettingsModel)
 *   [ ] 인터페이스 버저닝 전략 수립
 
 ### 3.2. DI 통합 (우선순위: 높음)
 *   [x] Microsoft.Extensions.DependencyInjection 통합
 *   [x] 생성자 주입 기반 컴포넌트 연결
+*   [x] 뷰-프레젠터-모델 의존성 주입 구현
 *   [ ] 인터페이스 기반 모의 테스트 환경 구성
 
 ### 3.3. 설정 관리 시스템 (우선순위: 높음)
-*   [ ] `PainterSettingsModel` 구현
+*   [x] `PainterSettingsModel` 구현
 *   [ ] 설정 변경 이벤트 처리 메커니즘 구현
 *   [ ] 설정 영속성 (저장/불러오기) 기능
 *   [ ] UI와 설정 동기화
@@ -24,6 +26,7 @@
 *   [ ] Presenter 단위 테스트 (모의 뷰 사용)
 *   [ ] 설정 모델 상태 변경 테스트
 *   [ ] 이벤트 처리 시나리오 테스트
+*   [ ] DI 컨테이너 구성 검증 테스트
 
 ### 3.5. 품질 관리 계획 (업데이트)
 1. **인터페이스 검증**: 모든 컴포넌트가 인터페이스 계약을 준수하는지 확인
@@ -41,9 +44,9 @@ gantt
     IModel 계열 정의          :done,    des2, 2025-06-02, 2d
     
     section 구현
-    PainterSettingsModel      :active,  des3, 2025-06-03, 2d
-    CanvasPresenter 업데이트   :         des4, 2025-06-05, 2d
-    ToolboxPresenter 업데이트  :         des5, 2025-06-07, 2d
+    PainterSettingsModel      :done,    des3, 2025-06-03, 2d
+    뷰 클래스 구현            :done,    des4, 2025-06-03, 3d
+    DI 통합                   :done,    des5, 2025-06-03, 2d
     
     section 테스트
     단위 테스트 작성           :         des6, 2025-06-09, 3d
@@ -55,10 +58,10 @@ gantt
 |----------|----------|----------|
 | 인터페이스 변경 | 1. 버저닝 적용<br>2. 기본 구현 제공 | 계획 수립 중 |
 | 설정 동기화 지연 | 1. 이벤트 기반 갱신<br>2. 쓰로틀링 적용 | 구현 예정 |
-| DI 구성 오류 | 1. 검증 로직 추가<br>2. 예외 처리 강화 | 부분 구현 |
+| DI 구성 오류 | 1. 검증 로직 추가<br>2. 예외 처리 강화 | 구현 완료 |
+| 뷰-모델 간 의존성 | 1. 인터페이스 분리 강화<br>2. 단위 테스트 강화 | 모니터링 중 |
 
 ## 6. 다음 단계
-1. `PainterSettingsModel` 구현 및 DI 통합
-2. 프레젠터 클래스 리팩토링 (인터페이스 기반)
-3. 설정 변경 이벤트 처리 메커니즘 구현
-4. 단위 테스트 환경 구성
+1. 설정 변경 이벤트 처리 메커니즘 구현
+2. 단위 테스트 환경 구성
+3. 레이어 관리 기능 구현

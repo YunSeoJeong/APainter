@@ -1,25 +1,41 @@
 using System;
-using Painter.Models; // BitmapModel 클래스를 사용하기 위해 추가
-using Painter.Views;
+using Painter.Interfaces;
+using Painter.Models;
 
-namespace Painter
+namespace Painter.Presenters
 {
     public class ToolboxPresenter
     {
-        private BitmapModel _bitmapModel; // 그림 데이터 Model
-        private ToolboxView _toolboxView; // 도구 상자 View
+        private readonly IToolboxView? _view;
+        private readonly IPainterSettingsModel? _settingsModel;
 
-        /// <summary>
-        /// 생성자
-        /// </summary>
-        /// <param name="bitmapModel">BitmapModel</param>
-        /// <param name="toolboxView">ToolboxView</param>
-        public ToolboxPresenter(BitmapModel bitmapModel, ToolboxView toolboxView) { throw new NotImplementedException(); }
+        public ToolboxPresenter(IToolboxView? view, IPainterSettingsModel? settingsModel)
+        {
+            _view = view;
+            _settingsModel = settingsModel;
+            SubscribeToEvents();
+        }
 
-        /// <summary>
-        /// 붓 도구 클릭 처리
-        /// </summary>
-        public void OnBrushButtonClicked() { throw new NotImplementedException(); }
-        // ... (기타 도구 클릭 처리)
+        private void SubscribeToEvents()
+        {
+            _view!.BrushSelected += OnBrushSelected;
+            _view!.PencilSelected += OnPencilSelected;
+            _view!.EraserSelected += OnEraserSelected;
+        }
+
+        public void OnBrushSelected(object? sender, EventArgs e)
+        {
+            _settingsModel!.SetTool(ToolType.Brush);
+        }
+
+        public void OnPencilSelected(object? sender, EventArgs e)
+        {
+            _settingsModel!.SetTool(ToolType.Pencil);
+        }
+
+        public void OnEraserSelected(object? sender, EventArgs e)
+        {
+            _settingsModel!.SetTool(ToolType.Eraser);
+        }
     }
 }

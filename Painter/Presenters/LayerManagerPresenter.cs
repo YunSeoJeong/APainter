@@ -1,26 +1,50 @@
-using Painter.Models;
-using Painter.Views;
 using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+using Painter.Interfaces;
+using Painter.Models;
 
 namespace Painter.Presenters
 {
     public class LayerManagerPresenter
     {
-        // 필드
-        private BitmapModel _bitmapModel; // 그림 데이터 Model
-        private LayerManagerView _layerManagerView; // 레이어 관리 View
+        private readonly ILayerManagerView _view;
+        private readonly IBitmapModel _bitmapModel;
+        private readonly List<Bitmap> _layers = new List<Bitmap>();
 
-        /// <summary>
-        /// 생성자
-        /// </summary>
-        /// <param name="bitmapModel">BitmapModel</param>
-        /// <param name="layerManagerView">LayerManagerView</param>
-        public LayerManagerPresenter(BitmapModel bitmapModel, LayerManagerView layerManagerView) { throw new NotImplementedException(); }
+        public LayerManagerPresenter(ILayerManagerView view, IBitmapModel bitmapModel)
+        {
+            _view = view;
+            _bitmapModel = bitmapModel;
+            SubscribeToEvents();
+        }
 
-        /// <summary>
-        /// 레이어 추가 버튼 클릭 처리
-        /// </summary>
-        public void OnAddLayerButtonClicked() { throw new NotImplementedException(); }
-        // ... (기타 레이어 관리 버튼 클릭 처리)
+        private void SubscribeToEvents()
+        {
+            _view.AddLayerClicked += OnAddLayerClicked;
+        }
+
+        public void OnAddLayerClicked(object? sender, EventArgs e)
+        {
+            // 새 레이어 생성 (기본 크기 800x600)
+            // TODO 현재 캔버스 크기에 맞추어 레이어 생성
+            var newLayer = new Bitmap(800, 600);
+            using (var g = Graphics.FromImage(newLayer))
+            {
+                g.Clear(Color.Transparent);
+            }
+            
+            _layers.Add(newLayer);
+            UpdateLayerList();
+        }
+
+        private void UpdateLayerList()
+        {
+            // 레이어 이름 목록 생성
+            var layerNames = _layers.Select((_, index) => $"Layer {index + 1}").ToList();
+            _view.UpdateLayerList(layerNames);
+        }
     }
 }

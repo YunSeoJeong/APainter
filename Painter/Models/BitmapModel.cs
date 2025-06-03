@@ -10,7 +10,7 @@ namespace Painter.Models
         private Bitmap _bitmap;
         private int _width;
         private int _height;
-        private BitmapData _bitmapData;
+        private BitmapData? _bitmapData; // nullable로 변경
         private IntPtr _scan0;
         private bool _isLocked = false;
 
@@ -42,7 +42,7 @@ namespace Painter.Models
         {
             if (!_isLocked) return;
             
-            _bitmap.UnlockBits(_bitmapData);
+            _bitmap.UnlockBits(_bitmapData!); // null-forgiving operator 사용
             _bitmapData = null;
             _isLocked = false;
         }
@@ -57,7 +57,7 @@ namespace Painter.Models
 
             unsafe
             {
-                byte* ptr = (byte*)_scan0 + y * _bitmapData.Stride + x * 4;
+                byte* ptr = (byte*)_scan0 + y * _bitmapData!.Stride + x * 4;
                 ptr[0] = color.B;
                 ptr[1] = color.G;
                 ptr[2] = color.R;
@@ -75,7 +75,7 @@ namespace Painter.Models
 
             unsafe
             {
-                byte* ptr = (byte*)_scan0 + y * _bitmapData.Stride + x * 4;
+                byte* ptr = (byte*)_scan0 + y * _bitmapData!.Stride + x * 4;
                 return Color.FromArgb(ptr[3], ptr[2], ptr[1], ptr[0]);
             }
         }
@@ -85,35 +85,6 @@ namespace Painter.Models
             using (Graphics g = Graphics.FromImage(_bitmap))
             {
                 g.Clear(color);
-            }
-        }
-
-        public void Save(string filePath)
-        {
-            try
-            {
-                _bitmap.Save(filePath, ImageFormat.Png);
-            }
-            catch (Exception ex)
-            {
-                throw new IOException("Failed to save image", ex);
-            }
-        }
-
-        public void Load(string filePath)
-        {
-            try
-            {
-                Bitmap loadedBitmap = new Bitmap(filePath);
-
-                _bitmap.Dispose();
-                _bitmap = loadedBitmap;
-                _width = _bitmap.Width;
-                _height = _bitmap.Height;
-            }
-            catch (Exception ex)
-            {
-                throw new IOException("Failed to load image", ex);
             }
         }
 

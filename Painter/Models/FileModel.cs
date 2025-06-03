@@ -1,10 +1,12 @@
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using Painter.Interfaces;
 
 namespace Painter.Models
 {
-    public class FileModel
+    public class FileModel : IFileModel
     {
         public void SaveToFile(Bitmap bitmap, string filePath)
         {
