@@ -41,8 +41,6 @@
     *   void SetPixel(int x, int y, Color color)
     *   Color GetPixel(int x, int y)
     *   void Clear(Color color)
-    *   void Save(string filePath)
-    *   void Load(string filePath)
     *   void Dispose()
 
 #### IFileModel
@@ -63,6 +61,8 @@
     *   int BrushSize { get; set; }
 *   **이벤트:**
     *   event Action ToolChanged
+    *   event Action PrimaryColorChanged
+    *   event Action BrushSizeChanged
 *   **메서드:**
     *   void SetTool(ToolType tool)
 
@@ -75,6 +75,7 @@
     *   int _height
     *   BitmapData _bitmapData
     *   IntPtr _scan0
+    *   bool _isLocked
 *   **생성자:**
     *   BitmapModel(int width, int height)
     *   BitmapModel()
@@ -85,9 +86,10 @@
     *   void SetPixel(int x, int y, Color color)
     *   Color GetPixel(int x, int y)
     *   void Clear(Color color)
-    *   void Save(string filePath)
-    *   void Load(string filePath)
     *   void Dispose()
+*   **속성:**
+    *   int Width
+    *   int Height
 
 ### 2.2. ComfyUIModel : IComfyUIModel
 *   **필드:**
@@ -101,13 +103,17 @@
     *   Task<Workflow> GetWorkflow(string workflowId)
 
 ### 2.3. FileModel : IFileModel
-*   **필드:**
-    *   string _filePath
 *   **메서드:**
     *   void SaveToFile(Bitmap bitmap, string filePath)
     *   Bitmap LoadFromFile(string filePath)
 
-### 2.4. PainterSettingsModel : IPainterSettingsModel
+### 2.4. ImageInfo
+*   (아직 구현되지 않음)
+
+### 2.5. Workflow
+*   (아직 구현되지 않음)
+
+### 2.6. PainterSettingsModel : IPainterSettingsModel
 *   **필드:**
     *   ToolType _currentTool
     *   Color _primaryColor
@@ -118,6 +124,8 @@
     *   int BrushSize { get; set; }
 *   **이벤트:**
     *   event Action ToolChanged
+    *   event Action PrimaryColorChanged
+    *   event Action BrushSizeChanged
 *   **메서드:**
     *   void SetTool(ToolType tool)
 

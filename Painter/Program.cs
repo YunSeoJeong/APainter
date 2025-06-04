@@ -19,7 +19,7 @@ namespace Painter
             // DI 컨테이너 설정
             var serviceProvider = DependencyInjection.ConfigureServices();
 
-            // MainPresenter 가져오기
+            // 프레젠터 생성
             var mainPresenter = serviceProvider.GetRequiredService<MainPresenter>();
 
             // 애플리케이션 실행

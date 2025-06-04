@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Painter.Interfaces;
 using Painter.Models;
 using Painter.Presenters;
+using Painter.Strategies;
 using Painter.Views;
 using System;
 using System.Net.Http;
@@ -24,21 +25,27 @@ namespace Painter
             services.AddSingleton<IComfyUIModel>(provider => 
                 new ComfyUIModel(
                     provider.GetRequiredService<HttpClient>(), 
-                    "http://localhost:8188/")); // TODO: 설정 파일에서 가져오도록 개선
+                    "http://localhost:8188/"));
+            
+            // 팩토리 및 전략 등록
+            services.AddSingleton<IToolStrategyFactory, ToolStrategyFactory>();
+            services.AddTransient<IToolStrategy, BrushToolStrategy>();
+            services.AddTransient<IToolStrategy, PencilToolStrategy>();
+            services.AddTransient<IToolStrategy, EraserToolStrategy>();
             
             // 뷰 등록
-            services.AddTransient<IMainView, MainForm>();
-            services.AddTransient<ICanvasView, CanvasView>();
-            services.AddTransient<IToolboxView, ToolboxView>();
-            services.AddTransient<ILayerManagerView, LayerManagerView>();
-            services.AddTransient<IMenuView, MenuView>();
+            services.AddSingleton<IMainView, MainForm>();
+            services.AddSingleton<ICanvasView, CanvasView>();
+            services.AddSingleton<IToolboxView, ToolboxView>();
+            services.AddSingleton<ILayerManagerView, LayerManagerView>();
+            services.AddSingleton<IMenuView, MenuView>();
             
             // 프레젠터 등록
-            services.AddTransient<MainPresenter>();
-            services.AddTransient<CanvasPresenter>();
-            services.AddTransient<ToolboxPresenter>();
-            services.AddTransient<LayerManagerPresenter>();
-            services.AddTransient<MenuPresenter>();
+            services.AddSingleton<MainPresenter>();
+            services.AddSingleton<CanvasPresenter>();
+            services.AddSingleton<ToolboxPresenter>();
+            services.AddSingleton<LayerManagerPresenter>();
+            services.AddSingleton<MenuPresenter>();
             
             return services.BuildServiceProvider();
         }

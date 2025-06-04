@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Painter.Models;
 using Painter.Interfaces;
+using System.Drawing;
 
 namespace Painter.Test.Models
 {
@@ -62,6 +63,53 @@ namespace Painter.Test.Models
             Assert.AreEqual(ToolType.Brush, settingsModel.CurrentTool);
             Assert.AreEqual(Color.Black, settingsModel.PrimaryColor);
             Assert.AreEqual(5, settingsModel.BrushSize);
+        }
+        
+        [TestMethod]
+        public void ToolChangedEvent_NotifiesMultipleSubscribers()
+        {
+            // Arrange
+            var settingsModel = new PainterSettingsModel();
+            int eventCount = 0;
+            
+            settingsModel.ToolChanged += () => eventCount++;
+            settingsModel.ToolChanged += () => eventCount++;
+
+            // Act
+            settingsModel.SetTool(ToolType.Pencil);
+
+            // Assert
+            Assert.AreEqual(2, eventCount);
+        }
+
+        [TestMethod]
+        public void BrushSize_WhenSet_TriggersBrushSizeChangedEvent()
+        {
+            // Arrange
+            var settingsModel = new PainterSettingsModel();
+            bool eventTriggered = false;
+            settingsModel.BrushSizeChanged += () => eventTriggered = true;
+
+            // Act
+            settingsModel.BrushSize = 10;
+
+            // Assert
+            Assert.IsTrue(eventTriggered);
+        }
+
+        [TestMethod]
+        public void PrimaryColor_WhenSet_TriggersPrimaryColorChangedEvent()
+        {
+            // Arrange
+            var settingsModel = new PainterSettingsModel();
+            bool eventTriggered = false;
+            settingsModel.PrimaryColorChanged += () => eventTriggered = true;
+
+            // Act
+            settingsModel.PrimaryColor = Color.Red;
+
+            // Assert
+            Assert.IsTrue(eventTriggered);
         }
     }
 }

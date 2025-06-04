@@ -48,6 +48,10 @@ namespace Painter.Models
         public void SetPixel(int x, int y, Color color)
         {
             if (!_isLocked) return;
+            // 좌표가 비트맵 범위를 벗어나면 메모리 접근 시도하지 않음
+            if (x < 0 || x >= _width || y < 0 || y >= _height)
+                return;
+                
             unsafe
             {
                 byte* row = (byte*)_scan0 + y * _bitmapData!.Stride;
