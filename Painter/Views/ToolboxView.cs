@@ -28,6 +28,7 @@ namespace Painter.Views
             // 레이아웃 설정
             FlowDirection = FlowDirection.TopDown;
             WrapContents = false;
+            Padding = new Padding(0, 30, 0, 0);
 
             // 도구 버튼 생성 및 추가
             BtnBrush = CreateToolButton("Brush", OnBrushSelected);
@@ -38,6 +39,8 @@ namespace Painter.Views
             Controls.Add(BtnBrush);
             Controls.Add(BtnPencil);
             Controls.Add(BtnEraser);
+            Controls.Add(BtnSpray);
+            SetActiveTool(ToolType.Brush);
         }
 
         /// <summary>도구 버튼 생성 메서드</summary>
@@ -50,7 +53,8 @@ namespace Painter.Views
             {
                 Text = text,
                 Width = 100,
-                Height = 30
+                Height = 30,
+                BackColor = System.Drawing.SystemColors.Control
             };
             button.Click += handler;
             return button;
@@ -72,17 +76,36 @@ namespace Painter.Views
         private void OnEraserSelected(object? sender, EventArgs e)
         {
             EraserSelected?.Invoke(this, EventArgs.Empty);
-       }
+        }
 
-       /// <summary>스프레이 도구 선택 이벤트 핸들러</summary>
-       private void OnSpraySelected(object? sender, EventArgs e)
-       {
+        /// <summary>스프레이 도구 선택 이벤트 핸들러</summary>
+        private void OnSpraySelected(object? sender, EventArgs e)
+        {
            SpraySelected?.Invoke(this, EventArgs.Empty);
         }
 
         public void SetActiveTool(ToolType toolType)
         {
-            throw new NotImplementedException();
+            BtnBrush!.BackColor = System.Drawing.SystemColors.Control;
+            BtnPencil!.BackColor = System.Drawing.SystemColors.Control;
+            BtnEraser!.BackColor = System.Drawing.SystemColors.Control;
+            BtnSpray!.BackColor = System.Drawing.SystemColors.Control;
+
+            switch (toolType)
+            {
+                case ToolType.Brush:
+                    BtnBrush.BackColor = System.Drawing.Color.LightBlue;
+                    break;
+                case ToolType.Pencil:
+                    BtnPencil.BackColor = System.Drawing.Color.LightBlue;
+                    break;
+                case ToolType.Eraser:
+                    BtnEraser.BackColor = System.Drawing.Color.LightBlue;
+                    break;
+               case ToolType.Spray:
+                    BtnSpray.BackColor = System.Drawing.Color.LightBlue;
+                    break;
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ namespace Painter.Interfaces
         event EventHandler BrushSelected;
         event EventHandler PencilSelected;
         event EventHandler EraserSelected;
+        event EventHandler SpraySelected;
         
         void SetActiveTool(ToolType toolType);
     }

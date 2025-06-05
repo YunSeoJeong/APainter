@@ -20,6 +20,7 @@ namespace Painter.Interfaces
     {
         Brush,
         Pencil,
-        Eraser
+        Eraser,
+        Spray
     }
 }

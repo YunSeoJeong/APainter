@@ -22,6 +22,7 @@ namespace Painter.Presenters
             _view!.BrushSelected += OnBrushSelected;
             _view!.PencilSelected += OnPencilSelected;
             _view!.EraserSelected += OnEraserSelected;
+            _view!.SpraySelected += OnSpraySelected;
         }
 
         private void SubscribeToSettingsEvents()
@@ -53,6 +54,11 @@ namespace Painter.Presenters
         public void OnEraserSelected(object? sender, EventArgs e)
         {
             _settingsModel!.SetTool(ToolType.Eraser);
+        }
+
+        public void OnSpraySelected(object? sender, EventArgs e)
+        {
+            _settingsModel!.SetTool(ToolType.Spray);
         }
     }
 }

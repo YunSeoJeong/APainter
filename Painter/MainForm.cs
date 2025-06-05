@@ -44,10 +44,10 @@ namespace Painter
                 menuControl.Dock = DockStyle.Top;
                 Controls.Add(menuControl);
             }
-            
-            // 메인 패널 (도구상자 + 캔버스)
+
+            // 메인 패널 (도구상자 + 캔버스 + 레이어 매니저)
             var mainPanel = new Panel { Dock = DockStyle.Fill };
-            
+
             if (_toolboxView is Control toolboxControl)
             {
                 toolboxControl.Width = 200;
