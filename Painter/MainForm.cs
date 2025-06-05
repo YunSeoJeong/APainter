@@ -48,17 +48,17 @@ namespace Painter
             // 메인 패널 (도구상자 + 캔버스 + 레이어 매니저)
             var mainPanel = new Panel { Dock = DockStyle.Fill };
 
+            if (_canvasView is Control canvasControl)
+            {
+                canvasControl.Dock = DockStyle.Fill;
+                mainPanel.Controls.Add(canvasControl);
+            }
+            
             if (_toolboxView is Control toolboxControl)
             {
                 toolboxControl.Width = 200;
                 toolboxControl.Dock = DockStyle.Left;
                 mainPanel.Controls.Add(toolboxControl);
-            }
-            
-            if (_canvasView is Control canvasControl)
-            {
-                canvasControl.Dock = DockStyle.Fill;
-                mainPanel.Controls.Add(canvasControl);
             }
             
             Controls.Add(mainPanel);
