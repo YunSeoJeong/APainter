@@ -30,11 +30,20 @@ namespace Painter.Presenters
             
             // 도구 변경 이벤트 구독 추가
             _settingsModel.ToolChanged += OnToolChanged;
+            
+            // 초기 비트맵 설정
+            _view.SetBitmap(_bitmapModel.GetBitmap());
         }
 
         public void OnMouseDown(object? sender, MouseEventArgs e)
         {
             _lastPoint = e.Location;
+            
+            // 단일 클릭 시점에 점 그리기
+            if (e.Button == MouseButtons.Left)
+            {
+                DrawLine(e.Location, e.Location);
+            }
         }
 
         public void OnMouseMove(object? sender, MouseEventArgs e)
@@ -42,32 +51,37 @@ namespace Painter.Presenters
             Console.WriteLine($"MouseMove: Button={e.Button}, Location={e.Location}, LastPoint={_lastPoint}");
             if (_lastPoint.HasValue && e.Button == MouseButtons.Left)
             {
-                _bitmapModel.Lock();
-                try
-                {
-                    Console.WriteLine($"Using tool: {_settingsModel.CurrentTool}");
-                    var toolStrategy = _toolStrategyFactory.CreateToolStrategy(_settingsModel.CurrentTool);
-                    var context = new DrawingContext(
-                        _lastPoint.Value,
-                        e.Location,
-                        _settingsModel.PrimaryColor,
-                        _settingsModel.BrushSize,
-                        (x, y, color) => _bitmapModel.SetPixel(x, y, color)
-                    );
-                    toolStrategy.Draw(context);
-                    _lastPoint = e.Location; // 마지막 위치 업데이트 (연속적인 드로잉을 위해)
-                }
-                finally
-                {
-                    _bitmapModel.Unlock();
-                    UpdateView();
-                }
+                DrawLine(_lastPoint.Value, e.Location);
+                _lastPoint = e.Location; // 마지막 위치 업데이트 (연속적인 드로잉을 위해)
             }
         }
 
         public void OnMouseUp(object? sender, MouseEventArgs e)
         {
             _lastPoint = null;
+        }
+        
+        private void DrawLine(Point start, Point end)
+        {
+            _bitmapModel.Lock();
+            try
+            {
+                Console.WriteLine($"Using tool: {_settingsModel.CurrentTool}");
+                var toolStrategy = _toolStrategyFactory.CreateToolStrategy(_settingsModel.CurrentTool);
+                var context = new DrawingContext(
+                    start,
+                    end,
+                    _settingsModel.PrimaryColor,
+                    _settingsModel.BrushSize,
+                    (x, y, color) => _bitmapModel.SetPixel(x, y, color)
+                );
+                toolStrategy.Draw(context);
+            }
+            finally
+            {
+                _bitmapModel.Unlock();
+                UpdateView();
+            }
         }
 
         // 도구 변경 핸들러 추가

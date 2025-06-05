@@ -35,6 +35,7 @@ graph LR
     subgraph Presenter-Model 인터페이스
         direction LR
         G -->|IPainterSettingsModel| S
+        S -->|IPainterSettingsModel| N
         I -->|IBitmapModel| C
         I -->|IPainterSettingsModel| S
         K -->|IBitmapModel| C
@@ -55,7 +56,7 @@ graph LR
 
 ### 인터페이스 계층 설명:
 1. **View-Presenter 인터페이스**:
-   - `IToolboxView`: 도구 선택 이벤트 전달
+   - `IToolboxView`: 도구 선택 이벤트 전달 (Brush, Pencil, Eraser, Spray 포함)
    - `ICanvasView`: 마우스 이벤트 및 비트맵 업데이트
    - `ILayerManagerView`: 레이어 관리 이벤트
    - `IMenuView`: 파일 메뉴 이벤트

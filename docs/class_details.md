@@ -20,9 +20,10 @@
 
 #### IToolboxView : IView
 *   **메서드:**
-    *   event EventHandler BrushSelected
-    *   event EventHandler PencilSelected
-    *   event EventHandler EraserSelected
+  *   event EventHandler BrushSelected
+  *   event EventHandler PencilSelected
+  *   event EventHandler EraserSelected
+  *   event EventHandler SpraySelected
 
 #### ILayerManagerView : IView
 *   **메서드:**
@@ -159,6 +160,9 @@
     *   void Initialize()
     *   event EventHandler BrushSelected
     *   event EventHandler PencilSelected
+    *   event EventHandler EraserSelected
+    *   event EventHandler SpraySelected
+    *   event EventHandler PencilSelected
 
 ### 3.4. LayerManagerView : ILayerManagerView
 *   **필드:**
@@ -205,8 +209,9 @@
     *   IToolboxView _view
     *   IPainterSettingsModel _settingsModel
 *   **메서드:**
-    *   ToolboxPresenter(IToolboxView view, IPainterSettingsModel settingsModel)
-    *   void OnBrushSelected()
+  *   ToolboxPresenter(IToolboxView view, IPainterSettingsModel settingsModel)
+  *   void OnBrushSelected()
+  *   void OnSpraySelected()
     *   void OnPencilSelected()
 
 ### 4.4. LayerManagerPresenter

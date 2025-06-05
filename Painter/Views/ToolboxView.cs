@@ -10,9 +10,11 @@ namespace Painter.Views
         public Button? BtnBrush { get; private set; }
         public Button? BtnPencil { get; private set; }
         public Button? BtnEraser { get; private set; }
+        public Button? BtnSpray { get; private set; }
         public event EventHandler? BrushSelected;
         public event EventHandler? PencilSelected;
         public event EventHandler? EraserSelected;
+        public event EventHandler? SpraySelected;
 
         /// <summary>ToolboxView 생성자</summary>
         public ToolboxView()
@@ -31,6 +33,7 @@ namespace Painter.Views
             BtnBrush = CreateToolButton("Brush", OnBrushSelected);
             BtnPencil = CreateToolButton("Pencil", OnPencilSelected);
             BtnEraser = CreateToolButton("Eraser", OnEraserSelected);
+            BtnSpray = CreateToolButton("Spray", OnSpraySelected);
 
             Controls.Add(BtnBrush);
             Controls.Add(BtnPencil);
@@ -69,6 +72,12 @@ namespace Painter.Views
         private void OnEraserSelected(object? sender, EventArgs e)
         {
             EraserSelected?.Invoke(this, EventArgs.Empty);
+       }
+
+       /// <summary>스프레이 도구 선택 이벤트 핸들러</summary>
+       private void OnSpraySelected(object? sender, EventArgs e)
+       {
+           SpraySelected?.Invoke(this, EventArgs.Empty);
         }
 
         public void SetActiveTool(ToolType toolType)
