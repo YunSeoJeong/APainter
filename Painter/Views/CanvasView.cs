@@ -15,6 +15,8 @@ namespace Painter.Views
         private float zoom = 1.0f; // 확대/축소 배율 (1.0 = 100%)
         private PointF pan = new PointF(0, 0); // pan 벡터 (이동 벡터)
         private Matrix _transform; // 변환 행렬
+        private bool _isPanning = false;
+        private Point _lastPanPoint;
 
         /// <summary>현재 확대/축소 배율</summary>
         public float Zoom => zoom;
@@ -94,6 +96,18 @@ namespace Painter.Views
 
         private void PictureBox_MouseDown(object? sender, MouseEventArgs e)
         {
+            // 휠 버튼(가운데 버튼)으로 패닝 시작
+            if (e.Button == MouseButtons.Middle)
+            {
+                _isPanning = true;
+                _lastPanPoint = e.Location;
+                if (PictureBox != null)
+                {
+                    PictureBox.Cursor = Cursors.Hand;
+                }
+                return;
+            }
+
             var point = ViewToBitmap(e.Location);
             if (point != Point.Empty)
             {
@@ -103,6 +117,24 @@ namespace Painter.Views
 
         private void PictureBox_MouseMove(object? sender, MouseEventArgs e)
         {
+            if (_isPanning)
+            {
+                int deltaX = e.Location.X - _lastPanPoint.X;
+                int deltaY = e.Location.Y - _lastPanPoint.Y;
+
+                pan.X += deltaX;
+                pan.Y += deltaY;
+
+                _lastPanPoint = e.Location;
+
+                UpdateTransform();
+                if (PictureBox != null)
+                {
+                    PictureBox.Invalidate();
+                }
+                return;
+            }
+
             var point = ViewToBitmap(e.Location);
             if (point != Point.Empty)
             {
@@ -112,6 +144,16 @@ namespace Painter.Views
 
         private void PictureBox_MouseUp(object? sender, MouseEventArgs e)
         {
+            if (e.Button == MouseButtons.Middle && _isPanning)
+            {
+                _isPanning = false;
+                if (PictureBox != null)
+                {
+                    PictureBox.Cursor = Cursors.Default;
+                }
+                return;
+            }
+
             var point = ViewToBitmap(e.Location);
             if (point != Point.Empty)
             {
