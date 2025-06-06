@@ -151,43 +151,6 @@ sequenceDiagram
     IPainterSettingsModel->>CanvasPresenter: ToolChanged 이벤트 수신
     CanvasPresenter->>CanvasPresenter: 내부 도구 상태 업데이트
 ```
-
-### 3.5. 캔버스 확대/축소 프로세스
-```mermaid
-sequenceDiagram
-    participant CanvasView
-    participant CanvasPresenter
-    participant IPainterSettingsModel
-
-    CanvasView->>CanvasPresenter: ZoomInClicked(ZoomEventArgs)
-    CanvasPresenter->>IPainterSettingsModel: ZoomFactor 증가
-    IPainterSettingsModel->>CanvasPresenter: ZoomFactorChanged 이벤트 발생
-    CanvasPresenter->>CanvasView: SetZoom(ZoomFactor, center)
-
-    CanvasView->>CanvasPresenter: ZoomOutClicked(ZoomEventArgs)
-    CanvasPresenter->>IPainterSettingsModel: ZoomFactor 감소
-    IPainterSettingsModel->>CanvasPresenter: ZoomFactorChanged 이벤트 발생
-    CanvasPresenter->>CanvasView: SetZoom(ZoomFactor, center)
-```
-
-### 3.6. 스크롤을 이용한 캔버스 확대/축소 프로세스
-```mermaid
-sequenceDiagram
-    participant CanvasView
-    participant CanvasPresenter
-    participant IPainterSettingsModel
-
-    CanvasView->>CanvasPresenter: MouseWheel(MouseEventArgs)
-    alt MouseEventArgs.Delta > 0
-        CanvasPresenter->>CanvasPresenter: ZoomInClicked(ZoomEventArgs) 호출
-    else MouseEventArgs.Delta < 0
-        CanvasPresenter->>CanvasPresenter: ZoomOutClicked(ZoomEventArgs) 호출
-    end
-    CanvasPresenter->>IPainterSettingsModel: ZoomFactor 변경
-    IPainterSettingsModel->>CanvasPresenter: ZoomFactorChanged 이벤트 발생
-    CanvasPresenter->>CanvasView: SetZoom(ZoomFactor, center)
-```
-
 ## 6. 기술 스택 (업데이트)
 * **의존성 주입**: Microsoft.Extensions.DependencyInjection
 * **인터페이스 계약**: 모든 컴포넌트 간 통신은 인터페이스를 통해 수행
