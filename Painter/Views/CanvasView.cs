@@ -4,6 +4,7 @@ using System.Drawing.Drawing2D; // Matrix 클래스를 위해 추가
 using System.Windows.Forms;
 using Painter.Interfaces;
 using Painter.Presenters;
+using Painter.Utils; // GridBackground 사용을 위한 네임스페이스 추가
 
 namespace Painter.Views
 {
@@ -12,6 +13,8 @@ namespace Painter.Views
     {
         public PictureBox? PictureBox { get; private set; }
         private Bitmap? _currentBitmap;
+        private Bitmap? _gridBackground; // 그리드 배경 비트맵
+        private Size _lastGridSize; // 마지막으로 생성된 그리드 크기
         private float zoom = 1.0f; // 확대/축소 배율 (1.0 = 100%)
         private PointF pan = new PointF(0, 0); // pan 벡터 (이동 벡터)
         private Matrix _transform; // 변환 행렬
@@ -41,7 +44,7 @@ namespace Painter.Views
             PictureBox = new PictureBox
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
+                BackColor = Color.FromArgb(240, 240, 240), // 연한 회색 배경으로 변경
                 SizeMode = PictureBoxSizeMode.Normal // Zoom 모드에서 Normal로 변경
             };
 
@@ -59,6 +62,18 @@ namespace Painter.Views
         public void SetBitmap(Bitmap bitmap)
         {
             _currentBitmap = bitmap; // 현재 비트맵 저장
+            
+            // 크기가 변경된 경우에만 그리드 배경 재생성
+            if (_gridBackground == null || _lastGridSize != bitmap.Size)
+            {
+                if (_gridBackground != null)
+                {
+                    _gridBackground.Dispose();
+                }
+                _gridBackground = GridBackground.GenerateGrid(bitmap.Width, bitmap.Height);
+                _lastGridSize = bitmap.Size;
+            }
+            
             if (PictureBox != null)
             {
                 if (PictureBox.InvokeRequired)
@@ -163,14 +178,30 @@ namespace Painter.Views
         // Paint 이벤트 핸들러: 변환 행렬 적용 및 픽셀 보간 설정
         private void PictureBox_Paint(object? sender, PaintEventArgs e)
         {
-            if (PictureBox == null || _currentBitmap == null) return;
+            if (PictureBox == null || _currentBitmap == null || _gridBackground == null) return;
 
             // 원본 픽셀을 선명하게 보존하기 위한 그래픽스 설정
             e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
             e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
 
             e.Graphics.Transform = _transform;
+            
+            // 그리드 배경 렌더링
+            e.Graphics.DrawImage(_gridBackground, new Point(0, 0));
+            
+            // 메인 비트맵 렌더링
             e.Graphics.DrawImage(_currentBitmap, new Point(0, 0));
+            
+            // 캔버스 경계선 그리기 (확대율 반영) - 점선 제거하고 실선으로 변경
+            float borderWidth = 2f * zoom; // 확대율에 따라 두께 조절
+            using (Pen borderPen = new Pen(Color.DarkGray, borderWidth))
+            {
+                // 점선 스타일 제거 (기본값인 실선 사용)
+                e.Graphics.DrawRectangle(
+                    borderPen, 
+                    new Rectangle(0, 0, _currentBitmap.Width - 1, _currentBitmap.Height - 1)
+                );
+            }
         }
 
         // 마우스 휠 이벤트 핸들러 (새 로직 적용)
