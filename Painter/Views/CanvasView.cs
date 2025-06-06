@@ -12,8 +12,15 @@ namespace Painter.Views
     {
         public PictureBox? PictureBox { get; private set; }
         private Bitmap? _currentBitmap;
-        private float _zoomFactor = 1.0f; // 확대/축소 배율 (1.0 = 100%)
+        private float zoom = 1.0f; // 확대/축소 배율 (1.0 = 100%)
+        private PointF pan = new PointF(0, 0); // pan 벡터 (이동 벡터)
         private Matrix _transform; // 변환 행렬
+
+        /// <summary>현재 확대/축소 배율</summary>
+        public float Zoom => zoom;
+
+        /// <summary>현재 이동 벡터</summary>
+        public PointF Pan => pan;
 
         public event MouseEventHandler? MouseDownEvent;
         public event MouseEventHandler? MouseMoveEvent;
@@ -77,6 +84,14 @@ namespace Painter.Views
             return new Point((int)points[0].X, (int)points[0].Y);
         }
 
+        // 변환 행렬을 업데이트하는 메서드
+        private void UpdateTransform()
+        {
+            _transform.Reset();
+            _transform.Translate(pan.X, pan.Y);
+            _transform.Scale(zoom, zoom);
+        }
+
         private void PictureBox_MouseDown(object? sender, MouseEventArgs e)
         {
             var point = ViewToBitmap(e.Location);
@@ -116,34 +131,41 @@ namespace Painter.Views
             e.Graphics.DrawImage(_currentBitmap, new Point(0, 0));
         }
 
-        // 마우스 휠 이벤트 핸들러
+        // 마우스 휠 이벤트 핸들러 (새 로직 적용)
         private void PictureBox_MouseWheel(object? sender, MouseEventArgs e)
         {
             if (PictureBox == null || _currentBitmap == null) return;
 
+            float oldZoom = zoom;
             float zoomDelta = 0.1f;
             if (e.Delta > 0)
             {
-                _zoomFactor *= (1 + zoomDelta); // 확대
+                zoom += zoomDelta; // 확대
             }
             else
             {
-                _zoomFactor *= (1 - zoomDelta); // 축소
+                zoom -= zoomDelta; // 축소
             }
+            zoom = Math.Max(0.1f, Math.Min(5f, zoom)); // 제한
 
-            // 마우스 위치를 중심으로 확대/축소
-            ZoomAt(e.Location, _zoomFactor);
+            // 마우스 위치 기준으로 확대 위치 보정
+            var mouseWorldBefore = new PointF(
+                (e.X - pan.X) / oldZoom,
+                (e.Y - pan.Y) / oldZoom
+            );
+
+            var mouseWorldAfter = new PointF(
+                (e.X - pan.X) / zoom,
+                (e.Y - pan.Y) / zoom
+            );
+
+            pan.X += (mouseWorldAfter.X - mouseWorldBefore.X) * zoom;
+            pan.Y += (mouseWorldAfter.Y - mouseWorldBefore.Y) * zoom;
+
+            // 변환 행렬 업데이트: 이동 -> 확대 순서
+            UpdateTransform();
             PictureBox.Invalidate();
         }
 
-        // 마우스 위치를 중심으로 확대/축소
-        private void ZoomAt(Point center, float zoom)
-        {
-            // 중심점을 기준으로 변환 행렬 업데이트
-            _transform.Reset();
-            _transform.Translate(center.X, center.Y);
-            _transform.Scale(zoom, zoom);
-            _transform.Translate(-center.X, -center.Y);
-        }
     }
 }
