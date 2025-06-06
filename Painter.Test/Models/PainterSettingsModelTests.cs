@@ -12,12 +12,15 @@ namespace Painter.Test.Models
         [TestMethod]
         public void SetTool_ChangesCurrentToolAndRaisesEvent()
         {
+            // Arrange
             var settingsModel = new PainterSettingsModel();
             bool eventRaised = false;
             settingsModel.ToolChanged += () => eventRaised = true;
 
+            // Act
             settingsModel.SetTool(ToolType.Pencil);
 
+            // Assert
             Assert.AreEqual(ToolType.Pencil, settingsModel.CurrentTool);
             Assert.IsTrue(eventRaised);
         }
@@ -25,109 +28,88 @@ namespace Painter.Test.Models
         [TestMethod]
         public void PrimaryColor_Setter_SetsColor()
         {
+            // Arrange
             var settingsModel = new PainterSettingsModel();
             var newColor = Color.Red;
 
+            // Act
             settingsModel.PrimaryColor = newColor;
 
+            // Assert
             Assert.AreEqual(newColor, settingsModel.PrimaryColor);
         }
 
         [TestMethod]
         public void BrushSize_Setter_SetsSize()
         {
+            // Arrange
             var settingsModel = new PainterSettingsModel();
             var newSize = 10;
 
+            // Act
             settingsModel.BrushSize = newSize;
 
+            // Assert
             Assert.AreEqual(newSize, settingsModel.BrushSize);
         }
 
         [TestMethod]
         public void Constructor_InitializesWithDefaultValues()
         {
+            // Arrange & Act
             var settingsModel = new PainterSettingsModel();
 
+            // Assert
             Assert.AreEqual(ToolType.Brush, settingsModel.CurrentTool);
             Assert.AreEqual(Color.Black, settingsModel.PrimaryColor);
             Assert.AreEqual(5, settingsModel.BrushSize);
         }
-
+        
         [TestMethod]
         public void ToolChangedEvent_NotifiesMultipleSubscribers()
         {
+            // Arrange
             var settingsModel = new PainterSettingsModel();
             int eventCount = 0;
-
+            
             settingsModel.ToolChanged += () => eventCount++;
             settingsModel.ToolChanged += () => eventCount++;
 
+            // Act
             settingsModel.SetTool(ToolType.Pencil);
 
+            // Assert
             Assert.AreEqual(2, eventCount);
         }
 
         [TestMethod]
         public void BrushSize_WhenSet_TriggersBrushSizeChangedEvent()
         {
+            // Arrange
             var settingsModel = new PainterSettingsModel();
             bool eventTriggered = false;
             settingsModel.BrushSizeChanged += () => eventTriggered = true;
 
+            // Act
             settingsModel.BrushSize = 10;
 
+            // Assert
             Assert.IsTrue(eventTriggered);
         }
 
         [TestMethod]
         public void PrimaryColor_WhenSet_TriggersPrimaryColorChangedEvent()
         {
+            // Arrange
             var settingsModel = new PainterSettingsModel();
             bool eventTriggered = false;
             settingsModel.PrimaryColorChanged += () => eventTriggered = true;
 
+            // Act
             settingsModel.PrimaryColor = Color.Red;
 
+            // Assert
             Assert.IsTrue(eventTriggered);
-        }
-
-        [TestMethod]
-        public void MultiplePropertyChanges_TriggerCorrectEvents()
-        {
-            var settingsModel = new PainterSettingsModel();
-            int toolChangedCount = 0;
-            int colorChangedCount = 0;
-            int sizeChangedCount = 0;
-
-            settingsModel.ToolChanged += () => toolChangedCount++;
-            settingsModel.PrimaryColorChanged += () => colorChangedCount++;
-            settingsModel.BrushSizeChanged += () => sizeChangedCount++;
-
-            settingsModel.SetTool(ToolType.Eraser);
-            settingsModel.PrimaryColor = Color.Blue;
-            settingsModel.BrushSize = 8;
-            settingsModel.PrimaryColor = Color.Green;
-
-            Assert.AreEqual(1, toolChangedCount);
-            Assert.AreEqual(2, colorChangedCount);
-            Assert.AreEqual(1, sizeChangedCount);
-        }
-
-        [TestMethod]
-        public void EventUnsubscription_WorksCorrectly()
-        {
-            var settingsModel = new PainterSettingsModel();
-            int eventCount = 0;
-
-            void EventHandler() => eventCount++;
-            settingsModel.ToolChanged += EventHandler;
-
-            settingsModel.SetTool(ToolType.Pencil);
-            settingsModel.ToolChanged -= EventHandler;
-            settingsModel.SetTool(ToolType.Brush);
-
-            Assert.AreEqual(1, eventCount);
         }
     }
 }

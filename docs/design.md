@@ -50,19 +50,26 @@ graph TB
     A --> C
     A --> D
     A --> E
+    
+    C -- ZoomInClicked(ZoomEventArgs) --> H
+    C -- ZoomOutClicked(ZoomEventArgs) --> H
+    C -- MouseWheel(MouseEventArgs) --> H
+    H -->|IPainterSettingsModel: ZoomFactor| N
+    N -- ZoomFactorChanged --> H
+    H -- SetZoom(zoomFactor, center) --> C
 ```
 
 ### 2.2. 인터페이스 계층 설명
 1. **View-Presenter 계층**:
    - `IToolboxView`: 도구 선택 이벤트 전달
-   - `ICanvasView`: 마우스 이벤트 및 비트맵 업데이트
+   - `ICanvasView`: 마우스 이벤트, 비트맵 업데이트 및 확대/축소 이벤트, 마우스 휠 이벤트
    - `ILayerManagerView`: 레이어 관리 이벤트
    - `IMenuView`: 파일 메뉴 이벤트
 
 2. **Presenter-Model 계층**:
    - `IBitmapModel`: 그림 데이터 조작
    - `IFileModel`: 파일 입출력
-   - `IPainterSettingsModel`: 도구 설정 관리
+   - `IPainterSettingsModel`: 도구 설정 관리 및 확대/축소 비율 관리
    - `IComfyUIModel`: AI 이미지 생성
 
 ### 2.3. 인터페이스 정의 (업데이트)
@@ -72,7 +79,11 @@ public interface IPainterSettingsModel {
     ToolType CurrentTool { get; }
     Color PrimaryColor { get; set; }
     int BrushSize { get; set; }
+    float ZoomFactor { get; set; }
     event Action ToolChanged;
+    event Action PrimaryColorChanged;
+    event Action BrushSizeChanged;
+    event Action ZoomFactorChanged;
     void SetTool(ToolType tool);
 }
 
@@ -94,6 +105,18 @@ public interface IFileModel {
 // ComfyUI 모델 인터페이스
 public interface IComfyUIModel {
     Task<string> GenerateImage(string prompt);
+}
+
+// 캔버스 뷰 인터페이스
+public interface ICanvasView : IView {
+    void SetBitmap(Bitmap bitmap);
+    event MouseEventHandler MouseDownEvent;
+    event MouseEventHandler MouseMoveEvent;
+    event MouseEventHandler MouseUpEvent;
+    event EventHandler<ZoomEventArgs> ZoomInClicked;
+    event EventHandler<ZoomEventArgs> ZoomOutClicked;
+    void SetZoom(float zoomFactor, PointF center);
+    event MouseEventHandler MouseWheel;
 }
 ```
 
@@ -127,6 +150,42 @@ sequenceDiagram
     IPainterSettingsModel->>IPainterSettingsModel: ToolChanged 이벤트 발생
     IPainterSettingsModel->>CanvasPresenter: ToolChanged 이벤트 수신
     CanvasPresenter->>CanvasPresenter: 내부 도구 상태 업데이트
+```
+
+### 3.5. 캔버스 확대/축소 프로세스
+```mermaid
+sequenceDiagram
+    participant CanvasView
+    participant CanvasPresenter
+    participant IPainterSettingsModel
+
+    CanvasView->>CanvasPresenter: ZoomInClicked(ZoomEventArgs)
+    CanvasPresenter->>IPainterSettingsModel: ZoomFactor 증가
+    IPainterSettingsModel->>CanvasPresenter: ZoomFactorChanged 이벤트 발생
+    CanvasPresenter->>CanvasView: SetZoom(ZoomFactor, center)
+
+    CanvasView->>CanvasPresenter: ZoomOutClicked(ZoomEventArgs)
+    CanvasPresenter->>IPainterSettingsModel: ZoomFactor 감소
+    IPainterSettingsModel->>CanvasPresenter: ZoomFactorChanged 이벤트 발생
+    CanvasPresenter->>CanvasView: SetZoom(ZoomFactor, center)
+```
+
+### 3.6. 스크롤을 이용한 캔버스 확대/축소 프로세스
+```mermaid
+sequenceDiagram
+    participant CanvasView
+    participant CanvasPresenter
+    participant IPainterSettingsModel
+
+    CanvasView->>CanvasPresenter: MouseWheel(MouseEventArgs)
+    alt MouseEventArgs.Delta > 0
+        CanvasPresenter->>CanvasPresenter: ZoomInClicked(ZoomEventArgs) 호출
+    else MouseEventArgs.Delta < 0
+        CanvasPresenter->>CanvasPresenter: ZoomOutClicked(ZoomEventArgs) 호출
+    end
+    CanvasPresenter->>IPainterSettingsModel: ZoomFactor 변경
+    IPainterSettingsModel->>CanvasPresenter: ZoomFactorChanged 이벤트 발생
+    CanvasPresenter->>CanvasView: SetZoom(ZoomFactor, center)
 ```
 
 ## 6. 기술 스택 (업데이트)

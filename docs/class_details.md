@@ -17,13 +17,17 @@
     *   event MouseEventHandler MouseDownEvent
     *   event MouseEventHandler MouseMoveEvent
     *   event MouseEventHandler MouseUpEvent
+    *   event EventHandler<ZoomEventArgs> ZoomInClicked
+    *   event EventHandler<ZoomEventArgs> ZoomOutClicked
+    *   void SetZoom(float zoomFactor, PointF center)
+    *   event MouseEventHandler MouseWheel
 
 #### IToolboxView : IView
 *   **메서드:**
-  *   event EventHandler BrushSelected
-  *   event EventHandler PencilSelected
-  *   event EventHandler EraserSelected
-  *   event EventHandler SpraySelected
+    *   event EventHandler BrushSelected
+    *   event EventHandler PencilSelected
+    *   event EventHandler EraserSelected
+    *   event EventHandler SpraySelected
 
 #### ILayerManagerView : IView
 *   **메서드:**
@@ -60,10 +64,12 @@
     *   ToolType CurrentTool { get; }
     *   Color PrimaryColor { get; set; }
     *   int BrushSize { get; set; }
+    *   float ZoomFactor { get; set; }
 *   **이벤트:**
     *   event Action ToolChanged
     *   event Action PrimaryColorChanged
     *   event Action BrushSizeChanged
+    *   event Action ZoomFactorChanged
 *   **메서드:**
     *   void SetTool(ToolType tool)
 
@@ -119,14 +125,17 @@
     *   ToolType _currentTool
     *   Color _primaryColor
     *   int _brushSize
+    *   float _zoomFactor
 *   **속성:**
     *   ToolType CurrentTool { get; }
     *   Color PrimaryColor { get; set; }
     *   int BrushSize { get; set; }
+    *   float ZoomFactor { get; set; }
 *   **이벤트:**
     *   event Action ToolChanged
     *   event Action PrimaryColorChanged
     *   event Action BrushSizeChanged
+    *   event Action ZoomFactorChanged
 *   **메서드:**
     *   void SetTool(ToolType tool)
 
@@ -151,6 +160,7 @@
     *   event MouseEventHandler MouseDownEvent
     *   event MouseEventHandler MouseMoveEvent
     *   event MouseEventHandler MouseUpEvent
+    *   event MouseEventHandler MouseWheel
 
 ### 3.3. ToolboxView : IToolboxView
 *   **필드:**
@@ -203,15 +213,18 @@
     *   void OnMouseMove(int x, int y)
     *   void OnMouseUp(int x, int y)
     *   void UpdateView()
+    *   void OnZoomInClicked(object sender, ZoomEventArgs e)
+    *   void OnZoomOutClicked(object sender, ZoomEventArgs e)
+    *   void OnMouseWheel(object sender, MouseEventArgs e)
 
 ### 4.3. ToolboxPresenter
 *   **필드:**
     *   IToolboxView _view
     *   IPainterSettingsModel _settingsModel
 *   **메서드:**
-  *   ToolboxPresenter(IToolboxView view, IPainterSettingsModel settingsModel)
-  *   void OnBrushSelected()
-  *   void OnSpraySelected()
+    *   ToolboxPresenter(IToolboxView view, IPainterSettingsModel settingsModel)
+    *   void OnBrushSelected()
+    *   void OnSpraySelected()
     *   void OnPencilSelected()
 
 ### 4.4. LayerManagerPresenter
@@ -229,3 +242,9 @@
 *   **메서드:**
     *   MenuPresenter(IMenuView view, IFileModel fileModel)
     *   void OnFileSaveClicked()
+
+## 5. 기타 클래스
+
+### 5.1. ZoomEventArgs : EventArgs
+*   **속성:**
+    *   PointF Center { get; set; }
