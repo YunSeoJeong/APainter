@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D; // Matrix 클래스를 위해 추가
 using System.Windows.Forms;
 using Painter.Interfaces;
 using Painter.Presenters;
@@ -11,6 +12,8 @@ namespace Painter.Views
     {
         public PictureBox? PictureBox { get; private set; }
         private Bitmap? _currentBitmap;
+        private float _zoomFactor = 1.0f; // 확대/축소 배율 (1.0 = 100%)
+        private Matrix _transform; // 변환 행렬
 
         public event MouseEventHandler? MouseDownEvent;
         public event MouseEventHandler? MouseMoveEvent;
@@ -19,6 +22,7 @@ namespace Painter.Views
         /// <summary>CanvasView 생성자</summary>
         public CanvasView()
         {
+            _transform = new Matrix(); // 생성자에서 초기화
             Initialize();
         }
 
@@ -29,13 +33,15 @@ namespace Painter.Views
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.White,
-                SizeMode = PictureBoxSizeMode.Zoom
+                SizeMode = PictureBoxSizeMode.Normal // Zoom 모드에서 Normal로 변경
             };
 
             // 마우스 이벤트 핸들러 연결 (변경: 람다식 대신 메서드 사용)
             PictureBox.MouseDown += PictureBox_MouseDown;
             PictureBox.MouseMove += PictureBox_MouseMove;
             PictureBox.MouseUp += PictureBox_MouseUp;
+            PictureBox.MouseWheel += PictureBox_MouseWheel; // 마우스 휠 이벤트 추가
+            PictureBox.Paint += PictureBox_Paint; // Paint 이벤트 추가
 
             Controls.Add(PictureBox);
         }
@@ -44,56 +50,31 @@ namespace Painter.Views
         public void SetBitmap(Bitmap bitmap)
         {
             _currentBitmap = bitmap; // 현재 비트맵 저장
-            if (PictureBox != null && PictureBox.InvokeRequired)
+            if (PictureBox != null)
             {
-                PictureBox.Invoke(new Action(() => PictureBox.Image = bitmap));
-            }
-            else if (PictureBox != null)
-            {
-                PictureBox.Image = bitmap;
+                if (PictureBox.InvokeRequired)
+                {
+                    PictureBox.Invoke(new Action(() => PictureBox.Invalidate()));
+                }
+                else
+                {
+                    PictureBox.Invalidate();
+                }
             }
         }
 
-        // 뷰 좌표를 비트맵 좌표로 변환 (Zoom 모드 고려)
+        // 뷰 좌표를 비트맵 좌표로 변환 (변환 행렬 적용)
         private Point ViewToBitmap(Point viewPoint)
         {
-            if (PictureBox == null || _currentBitmap == null || PictureBox.Image == null)
+            if (PictureBox == null || _currentBitmap == null)
                 return viewPoint;
 
-            // PictureBox의 SizeMode가 Zoom인 경우 변환
-            int pbWidth = PictureBox.Width;
-            int pbHeight = PictureBox.Height;
-            int imgWidth = _currentBitmap.Width;
-            int imgHeight = _currentBitmap.Height;
-
-            float imageRatio = (float)imgWidth / imgHeight;
-            float controlRatio = (float)pbWidth / pbHeight;
-
-            int imageWidth, imageHeight;
-            if (imageRatio >= controlRatio)
-            {
-                imageWidth = pbWidth;
-                imageHeight = (int)(imageWidth / imageRatio);
-            }
-            else
-            {
-                imageHeight = pbHeight;
-                imageWidth = (int)(imageHeight * imageRatio);
-            }
-
-            int imageLeft = (pbWidth - imageWidth) / 2;
-            int imageTop = (pbHeight - imageHeight) / 2;
-
-            // 마우스 좌표가 이미지 영역 내에 있는지 확인
-            if (viewPoint.X < imageLeft || viewPoint.X >= imageLeft + imageWidth || 
-                viewPoint.Y < imageTop || viewPoint.Y >= imageTop + imageHeight)
-            {
-                return Point.Empty; // 영역 밖
-            }
-
-            int x = (int)((viewPoint.X - imageLeft) * ((float)imgWidth / imageWidth));
-            int y = (int)((viewPoint.Y - imageTop) * ((float)imgHeight / imageHeight));
-            return new Point(x, y);
+            // 변환 행렬의 역행렬을 사용해 뷰 좌표를 비트맵 좌표로 변환
+            Matrix inverse = _transform.Clone();
+            inverse.Invert();
+            PointF[] points = { new PointF(viewPoint.X, viewPoint.Y) };
+            inverse.TransformPoints(points);
+            return new Point((int)points[0].X, (int)points[0].Y);
         }
 
         private void PictureBox_MouseDown(object? sender, MouseEventArgs e)
@@ -121,6 +102,48 @@ namespace Painter.Views
             {
                 MouseUpEvent?.Invoke(sender, new MouseEventArgs(e.Button, e.Clicks, point.X, point.Y, e.Delta));
             }
+        }
+        // Paint 이벤트 핸들러: 변환 행렬 적용 및 픽셀 보간 설정
+        private void PictureBox_Paint(object? sender, PaintEventArgs e)
+        {
+            if (PictureBox == null || _currentBitmap == null) return;
+
+            // 원본 픽셀을 선명하게 보존하기 위한 그래픽스 설정
+            e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+            e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
+
+            e.Graphics.Transform = _transform;
+            e.Graphics.DrawImage(_currentBitmap, new Point(0, 0));
+        }
+
+        // 마우스 휠 이벤트 핸들러
+        private void PictureBox_MouseWheel(object? sender, MouseEventArgs e)
+        {
+            if (PictureBox == null || _currentBitmap == null) return;
+
+            float zoomDelta = 0.1f;
+            if (e.Delta > 0)
+            {
+                _zoomFactor *= (1 + zoomDelta); // 확대
+            }
+            else
+            {
+                _zoomFactor *= (1 - zoomDelta); // 축소
+            }
+
+            // 마우스 위치를 중심으로 확대/축소
+            ZoomAt(e.Location, _zoomFactor);
+            PictureBox.Invalidate();
+        }
+
+        // 마우스 위치를 중심으로 확대/축소
+        private void ZoomAt(Point center, float zoom)
+        {
+            // 중심점을 기준으로 변환 행렬 업데이트
+            _transform.Reset();
+            _transform.Translate(center.X, center.Y);
+            _transform.Scale(zoom, zoom);
+            _transform.Translate(-center.X, -center.Y);
         }
     }
 }
