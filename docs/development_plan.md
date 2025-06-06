@@ -99,3 +99,54 @@ gantt
 1. 단위 테스트 환경 구성
 2. 레이어 관리 기능 확장
 3. 설정 영속성 기능 구현
+
+## 8. 향후 구현 로드맵 (2025-06-06 업데이트)
+
+### 8.1. 전체 구현 일정
+```mermaid
+gantt
+    title APainter 향후 구현 로드맵
+    dateFormat  YYYY-MM-DD
+    section 핵심 기능
+    파일 입출력 구현          :active,  file_io, 2025-06-07, 3d
+    설정 영속성 구현           :         settings, after file_io, 2d
+    레이어 관리 확장          :         layer_mgmt, after settings, 3d
+
+    section AI 통합
+    ComfyUI 통합 프로토타입   :         comfy_integ, after layer_mgmt, 4d
+    AI 이미지 생성 파이프라인  :         ai_pipeline, after comfy_integ, 3d
+
+    section 테스트 & 품질
+    단위 테스트 환경 구성      :         test_env, 2025-06-07, 2d
+    핵심 컴포넌트 테스트 작성   :         unit_tests, after test_env, 5d
+    통합 테스트 시나리오 작성   :         integration, after unit_tests, 3d
+
+    section 출시 준비
+    버저닝 전략 수립          :         versioning, 2025-06-20, 2d
+    설치 패키지 구성          :         packaging, after versioning, 2d
+```
+
+### 8.2. 세부 구현 우선순위
+1. **파일 입출력 (FileModel 구현)**
+   - Bitmap 저장/불러오기 기능 (PNG/JPG 형식 지원)
+   - 사용자 친화적인 파일 다이얼로그 통합
+   
+2. **설정 영속성**
+   - JSON 기반 설정 저장 시스템 구현
+   - 사용자별 설정 프로파일 관리 기능
+   - 설정 불러오기/내보내기 기능
+
+3. **레이어 관리 확장**
+   - 레이어 병합/분리 기능 구현
+   - 레이어 불투명도 조절 인터페이스
+   - 다양한 블렌딩 모드 지원 (Multiply, Screen, Overlay)
+
+4. **ComfyUI 통합**
+   - 안정적인 API 연동 모듈 개발
+   - 프롬프트 기반 이미지 생성 파이프라인 구축
+   - 생성된 이미지를 캔버스에 적용하는 워크플로우 구현
+
+### 8.3. 예상 위험 요소
+- AI 서비스 지연으로 인한 UI 정지 방지를 위한 비동기 처리
+- 대용량 이미지 처리 시 성능 저하 문제
+- 크로스 플랫폼 호환성 검증 (Windows/macOS/Linux)
