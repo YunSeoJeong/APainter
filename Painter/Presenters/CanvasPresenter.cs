@@ -73,7 +73,9 @@ namespace Painter.Presenters
                     end,
                     _settingsModel.PrimaryColor,
                     _settingsModel.BrushSize,
-                    (x, y, color) => _bitmapModel.SetPixel(x, y, color)
+                    (x, y, color) => _bitmapModel.SetPixel(x, y, color),
+                    (x, y) => _bitmapModel.GetPixel(x, y), // GetPixel 메서드 추가
+                    1.0f // 기본 투명도
                 );
                 toolStrategy.Draw(context);
             }

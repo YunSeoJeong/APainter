@@ -12,6 +12,7 @@ namespace Painter.Strategies
                 ToolType.Brush => new BrushToolStrategy(),
                 ToolType.Pencil => new PencilToolStrategy(),
                 ToolType.Eraser => new EraserToolStrategy(),
+                ToolType.Spray => new SprayToolStrategy(), // 스프레이 도구 추가
                 _ => new PencilToolStrategy()
             };
         }

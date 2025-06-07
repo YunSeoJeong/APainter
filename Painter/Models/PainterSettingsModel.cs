@@ -8,7 +8,7 @@ namespace Painter.Models
     {
         private ToolType _currentTool = ToolType.Brush;
         private Color _primaryColor = Color.Black;
-        private int _brushSize = 5;
+        private int _brushSize = 10; // 기본 크기 5 → 10으로 증가
         
         public event Action? ToolChanged;
         public event Action? PrimaryColorChanged;

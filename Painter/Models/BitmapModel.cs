@@ -1,7 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using Painter.Interfaces; // 네임스페이스 추가
+using Painter.Interfaces;
 
 namespace Painter.Models
 {
@@ -21,7 +21,8 @@ namespace Painter.Models
             _height = height;
         }
 
-        public BitmapModel() : this(800, 600) { }
+        // 기본 해상도를 1200x800으로 변경
+        public BitmapModel() : this(1200, 800) { }
 
         public Bitmap GetBitmap() => _bitmap;
 
@@ -48,7 +49,6 @@ namespace Painter.Models
         public void SetPixel(int x, int y, Color color)
         {
             if (!_isLocked) return;
-            // 좌표가 비트맵 범위를 벗어나면 메모리 접근 시도하지 않음
             if (x < 0 || x >= _width || y < 0 || y >= _height)
                 return;
                 
@@ -56,8 +56,34 @@ namespace Painter.Models
             {
                 byte* row = (byte*)_scan0 + y * _bitmapData!.Stride;
                 int* pixel = (int*)(row + x * 4);
-                *pixel = color.ToArgb();
+                
+                // 알파 블렌딩 (오버플로우 방지)
+                Color bgColor = Color.FromArgb(*pixel);
+                Color blendedColor = BlendColors(bgColor, color);
+                *pixel = blendedColor.ToArgb();
             }
+        }
+
+        private Color BlendColors(Color bg, Color fg)
+        {
+            float fgAlpha = fg.A / 255f;
+            float bgAlpha = bg.A / 255f;
+            float outAlpha = fgAlpha + (1 - fgAlpha) * bgAlpha;
+            
+            // 알파가 0인 경우 투명 반환
+            if (outAlpha <= 0.001f) return Color.Transparent;
+            
+            // RGB 계산
+            int r = (int)((fg.R * fgAlpha + bg.R * bgAlpha * (1 - fgAlpha)) / outAlpha);
+            int g = (int)((fg.G * fgAlpha + bg.G * bgAlpha * (1 - fgAlpha)) / outAlpha);
+            int b = (int)((fg.B * fgAlpha + bg.B * bgAlpha * (1 - fgAlpha)) / outAlpha);
+            
+            // 값 범위 제한 (0-255)
+            r = Math.Clamp(r, 0, 255);
+            g = Math.Clamp(g, 0, 255);
+            b = Math.Clamp(b, 0, 255);
+            
+            return Color.FromArgb((int)(outAlpha * 255), r, g, b);
         }
 
         public Color GetPixel(int x, int y)
@@ -85,7 +111,6 @@ namespace Painter.Models
             _bitmap?.Dispose();
         }
 
-        // 추가된 속성 구현
         public int Width => _width;
         public int Height => _height;
     }
