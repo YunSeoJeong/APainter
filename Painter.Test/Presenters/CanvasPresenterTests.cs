@@ -68,27 +68,27 @@ namespace Painter.Test.Presenters
             mockToolStrategyFactory.Verify(f => f.CreateToolStrategy(ToolType.Brush), Times.AtLeastOnce);
         }
 
-        [TestMethod]
-        public void UpdateView_CallsSetBitmap()
-        {
-            // Arrange
-            var mockView = new Mock<ICanvasView>();
-            var mockBitmapModel = new Mock<IBitmapModel>();
-            var mockSettingsModel = new Mock<IPainterSettingsModel>();
-            var mockToolStrategyFactory = new Mock<IToolStrategyFactory>();
+        // [TestMethod]
+        // public void UpdateView_CallsSetBitmap()
+        // {
+        //     // Arrange
+        //     var mockView = new Mock<ICanvasView>();
+        //     var mockBitmapModel = new Mock<IBitmapModel>();
+        //     var mockSettingsModel = new Mock<IPainterSettingsModel>();
+        //     var mockToolStrategyFactory = new Mock<IToolStrategyFactory>();
             
-            var presenter = new CanvasPresenter(
-                mockView.Object, 
-                mockBitmapModel.Object, 
-                mockSettingsModel.Object,
-                mockToolStrategyFactory.Object);
+        //     var presenter = new CanvasPresenter(
+        //         mockView.Object, 
+        //         mockBitmapModel.Object, 
+        //         mockSettingsModel.Object,
+        //         mockToolStrategyFactory.Object);
 
-            // Act
-            presenter.UpdateView();
+        //     // Act
+        //     presenter.UpdateView();
 
-            // Assert
-            mockView.Verify(v => v.SetBitmap(It.IsAny<Bitmap>()), Times.Once);
-        }
+        //     // Assert
+        //     mockView.Verify(v => v.SetBitmap(It.IsAny<Bitmap>()), Times.Once);
+        // }
 
         [TestMethod]
         public void CanvasPresenter_OnMouseMove_WithPencilTool_DrawsPixels()

@@ -10,13 +10,13 @@ namespace Painter.Models
         private Bitmap _bitmap;
         private BitmapData? _bitmapData;
         private IntPtr _scan0;
-        private bool _isLocked = false;
+        private int _lockCount = 0; // Track nested lock requests
         private int _width;
         private int _height;
 
         public BitmapModel(int width, int height)
         {
-            _bitmap = new Bitmap(width, height);
+            _bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
             _width = width;
             _height = height;
         }
@@ -28,30 +28,60 @@ namespace Painter.Models
 
         public void Lock()
         {
-            if (_isLocked) return;
-            _bitmapData = _bitmap.LockBits(
-                new Rectangle(0, 0, _bitmap.Width, _bitmap.Height),
-                ImageLockMode.ReadWrite,
-                PixelFormat.Format32bppArgb
-            );
-            _scan0 = _bitmapData.Scan0;
-            _isLocked = true;
+            if (_lockCount == 0)
+            {
+                _bitmapData = LockBits(
+                    new Rectangle(0, 0, _bitmap.Width, _bitmap.Height),
+                    ImageLockMode.ReadWrite,
+                    PixelFormat.Format32bppArgb
+                );
+                _scan0 = _bitmapData.Scan0;
+            }
+            _lockCount++;
         }
 
         public void Unlock()
         {
-            if (!_isLocked) return;
-            _bitmap.UnlockBits(_bitmapData!);
-            _bitmapData = null;
-            _isLocked = false;
+            if (_lockCount == 0) return;
+            
+            _lockCount--;
+            
+            if (_lockCount == 0)
+            {
+                UnlockBits(_bitmapData!);
+                _bitmapData = null;
+            }
+        }
+
+        public BitmapData LockBits(Rectangle rect, ImageLockMode flags, PixelFormat format)
+        {
+            // Always return existing lock if bitmap is already locked
+            if (_lockCount > 0)
+            {
+                return _bitmapData!;
+            }
+            
+            // Only lock if not already locked
+            return _bitmap.LockBits(rect, flags, format);
+        }
+
+        public void UnlockBits(BitmapData bitmapData)
+        {
+            // Only unlock if we're the top-level lock
+            if (_lockCount == 0)
+            {
+                _bitmap.UnlockBits(bitmapData);
+                _bitmapData = null;
+            }
         }
 
         public void SetPixel(int x, int y, Color color)
         {
-            if (!_isLocked) return;
             if (x < 0 || x >= _width || y < 0 || y >= _height)
                 return;
                 
+            if (_lockCount == 0) return;
+            
             unsafe
             {
                 byte* row = (byte*)_scan0 + y * _bitmapData!.Stride;
@@ -88,7 +118,8 @@ namespace Painter.Models
 
         public Color GetPixel(int x, int y)
         {
-            if (!_isLocked) return Color.Empty;
+            if (_lockCount == 0) return Color.Empty;
+            
             unsafe
             {
                 byte* row = (byte*)_scan0 + y * _bitmapData!.Stride;
@@ -107,7 +138,11 @@ namespace Painter.Models
 
         public void Dispose()
         {
-            if (_isLocked) Unlock();
+            if (_lockCount > 0)
+            {
+                _lockCount = 1;
+                Unlock();
+            }
             _bitmap?.Dispose();
         }
 

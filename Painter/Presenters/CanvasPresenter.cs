@@ -1,5 +1,7 @@
 using System;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Painter.Interfaces;
 using Painter.Models;
@@ -7,7 +9,7 @@ using Painter.Strategies;
 
 namespace Painter.Presenters
 {
-    public class CanvasPresenter
+    public unsafe class CanvasPresenter
     {
         private readonly ICanvasView _view;
         private readonly IBitmapModel _bitmapModel;
@@ -18,8 +20,8 @@ namespace Painter.Presenters
         private Bitmap? _maskBitmap; // 마스크 비트맵 (완전 불투명 초기값)
         private Rectangle _dirtyRect; // Dirty 영역 추적
 
-        public CanvasPresenter(ICanvasView view, IBitmapModel bitmapModel, 
-                              IPainterSettingsModel settingsModel, 
+        public CanvasPresenter(ICanvasView view, IBitmapModel bitmapModel,
+                              IPainterSettingsModel settingsModel,
                               IToolStrategyFactory toolStrategyFactory)
         {
             _view = view;
@@ -52,7 +54,6 @@ namespace Painter.Presenters
 
         public void OnMouseMove(object? sender, MouseEventArgs e)
         {
-            Console.WriteLine($"MouseMove: Button={e.Button}, Location={e.Location}, LastPoint={_lastPoint}");
             if (_lastPoint.HasValue && e.Button == MouseButtons.Left)
             {
                 DrawLine(_lastPoint.Value, e.Location);
@@ -81,14 +82,14 @@ namespace Painter.Presenters
             var mainBitmap = _bitmapModel.GetBitmap();
             
             // 임시 비트맵 초기화 (완전 투명)
-            _tempBitmap = new Bitmap(mainBitmap.Width, mainBitmap.Height);
+            _tempBitmap = new Bitmap(mainBitmap.Width, mainBitmap.Height, PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(_tempBitmap))
             {
                 g.Clear(Color.Transparent);
             }
 
             // 마스크 비트맵 초기화 (완전 불투명)
-            _maskBitmap = new Bitmap(mainBitmap.Width, mainBitmap.Height);
+            _maskBitmap = new Bitmap(mainBitmap.Width, mainBitmap.Height, PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(_maskBitmap))
             {
                 g.Clear(Color.White);
@@ -97,46 +98,37 @@ namespace Painter.Presenters
 
         private void DrawLine(Point start, Point end)
         {
-            Console.WriteLine($"Using tool: {_settingsModel.CurrentTool}");
             var toolStrategy = _toolStrategyFactory.CreateToolStrategy(_settingsModel.CurrentTool);
             
             // 현재 도구에 따라 적절한 비트맵 선택
-            Action<int, int, Color> setPixel;
-            Func<int, int, Color> getPixel;
-            
-            if (_settingsModel.CurrentTool == ToolType.Eraser)
-            {
-                setPixel = (x, y, color) => {
-                    if (_maskBitmap != null)
-                        _maskBitmap.SetPixel(x, y, Color.FromArgb(
-                            (int)(color.A * 0.2f), // 지우개 강도 조절
-                            color.R, color.G, color.B));
-                    _dirtyRect = UpdateDirtyRect(_dirtyRect, new Rectangle(x, y, 1, 1));
-                };
-                getPixel = (x, y) => _maskBitmap?.GetPixel(x, y) ?? Color.White;
-            }
-            else
-            {
-                setPixel = (x, y, color) => {
-                    if (_tempBitmap != null)
-                        _tempBitmap.SetPixel(x, y, color);
-                    _dirtyRect = UpdateDirtyRect(_dirtyRect, new Rectangle(x, y, 1, 1));
-                };
-                getPixel = (x, y) => _tempBitmap?.GetPixel(x, y) ?? Color.Transparent;
-            }
+            Bitmap targetBitmap = _settingsModel.CurrentTool == ToolType.Eraser ? _maskBitmap : _tempBitmap;
+            if (targetBitmap == null) return;
 
-            var context = new DrawingContext(
+            float opacity = _settingsModel.CurrentTool == ToolType.Eraser ? 0.2f : 0.8f;
+
+            // DrawingContext를 사용한 고속 픽셀 처리
+            using (var context = new DrawingContext(
                 start,
                 end,
                 _settingsModel.PrimaryColor,
                 _settingsModel.BrushSize,
-                setPixel,
-                getPixel,
-                _settingsModel.CurrentTool == ToolType.Eraser ? 0.2f : 0.8f // 도구별 기본 투명도
-            );
-            toolStrategy.Draw(context);
+                targetBitmap,
+                opacity))
+            {
+                toolStrategy.Draw(context);
+            }
             
-            // 실시간 합성 렌더링
+            // Dirty Rect 업데이트 (브러시 크기 고려)
+            int halfBrush = _settingsModel.BrushSize / 2;
+            Rectangle lineRect = new Rectangle(
+                Math.Min(start.X, end.X) - halfBrush,
+                Math.Min(start.Y, end.Y) - halfBrush,
+                Math.Abs(end.X - start.X) + _settingsModel.BrushSize,
+                Math.Abs(end.Y - start.Y) + _settingsModel.BrushSize
+            );
+            _dirtyRect = UpdateDirtyRect(_dirtyRect, lineRect);
+            
+            // 실시간 합성 렌더링 (Dirty Rect만 전달)
             _view.SetCompositeBitmap(
                 _bitmapModel.GetBitmap(),
                 _tempBitmap,
@@ -144,7 +136,7 @@ namespace Painter.Presenters
             );
         }
 
-        // 도구 변경 핸들러 추가
+        // 도구 변경 핸들러
         private void OnToolChanged()
         {
             System.Diagnostics.Debug.WriteLine($"Tool changed to: {_settingsModel.CurrentTool}");
@@ -158,17 +150,48 @@ namespace Painter.Presenters
             {
                 if (_tempBitmap != null)
                 {
-                    // 변경: 픽셀 단위 복사 방식으로 변경 (미리보기 병합 로직과 동일)
-                    for (int y = 0; y < _tempBitmap.Height; y++)
+                    // 고속 픽셀 복사를 위한 LockBits 사용
+                    var srcData = _tempBitmap.LockBits(
+                        new Rectangle(0, 0, _tempBitmap.Width, _tempBitmap.Height),
+                        ImageLockMode.ReadOnly,
+                        PixelFormat.Format32bppArgb
+                    );
+                    
+                    var dstData = _bitmapModel.LockBits(
+                        new Rectangle(0, 0, _bitmapModel.Width, _bitmapModel.Height),
+                        ImageLockMode.WriteOnly,
+                        PixelFormat.Format32bppArgb
+                    );
+                    
+                    try
                     {
-                        for (int x = 0; x < _tempBitmap.Width; x++)
+                        byte* srcPtr = (byte*)srcData.Scan0;
+                        byte* dstPtr = (byte*)dstData.Scan0;
+                        int srcStride = srcData.Stride;
+                        int dstStride = dstData.Stride;
+                        
+                        for (int y = 0; y < _tempBitmap.Height; y++)
                         {
-                            var srcColor = _tempBitmap.GetPixel(x, y);
-                            if (srcColor.A > 0) // 투명하지 않은 픽셀만 복사
+                            for (int x = 0; x < _tempBitmap.Width; x++)
                             {
-                                _bitmapModel.SetPixel(x, y, srcColor);
+                                int srcIndex = y * srcStride + x * 4;
+                                int dstIndex = y * dstStride + x * 4;
+                                
+                                byte srcA = srcPtr[srcIndex + 3];
+                                if (srcA > 0) // 투명하지 않은 픽셀만 복사
+                                {
+                                    dstPtr[dstIndex] = srcPtr[srcIndex];     // B
+                                    dstPtr[dstIndex + 1] = srcPtr[srcIndex + 1]; // G
+                                    dstPtr[dstIndex + 2] = srcPtr[srcIndex + 2]; // R
+                                    dstPtr[dstIndex + 3] = srcPtr[srcIndex + 3]; // A
+                                }
                             }
                         }
+                    }
+                    finally
+                    {
+                        _tempBitmap.UnlockBits(srcData);
+                        _bitmapModel.UnlockBits(dstData);
                     }
                     
                     // 임시 비트맵 초기화
@@ -180,20 +203,66 @@ namespace Painter.Presenters
 
                 if (_maskBitmap != null)
                 {
-                    // 마스크 비트맵 병합 (곱연산)
-                    for (int y = 0; y < _maskBitmap.Height; y++)
+                    // 마스크 비트맵 병합 (고속 픽셀 연산)
+                    var maskData = _maskBitmap.LockBits(
+                        new Rectangle(0, 0, _maskBitmap.Width, _maskBitmap.Height),
+                        ImageLockMode.ReadOnly,
+                        PixelFormat.Format32bppArgb
+                    );
+                    
+                    var dstData = _bitmapModel.LockBits(
+                        new Rectangle(0, 0, _bitmapModel.Width, _bitmapModel.Height),
+                        ImageLockMode.ReadWrite,
+                        PixelFormat.Format32bppArgb
+                    );
+                    
+                    try
                     {
-                        for (int x = 0; x < _maskBitmap.Width; x++)
+                        byte* maskPtr = (byte*)maskData.Scan0;
+                        byte* dstPtr = (byte*)dstData.Scan0;
+                        int maskStride = maskData.Stride;
+                        int dstStride = dstData.Stride;
+                        
+                        for (int y = 0; y < _maskBitmap.Height; y++)
                         {
-                            var maskColor = _maskBitmap.GetPixel(x, y);
-                            if (maskColor.A < 255)
+                            for (int x = 0; x < _maskBitmap.Width; x++)
                             {
-                                var dstColor = _bitmapModel.GetPixel(x, y);
-                                var blended = DrawingContext.MultiplyColors(maskColor, dstColor);
-                                _bitmapModel.SetPixel(x, y, blended);
+                                int maskIndex = y * maskStride + x * 4;
+                                int dstIndex = y * dstStride + x * 4;
+                                
+                                byte maskA = maskPtr[maskIndex + 3];
+                                if (maskA < 255)
+                                {
+                                    Color maskColor = Color.FromArgb(
+                                        maskPtr[maskIndex + 3],
+                                        maskPtr[maskIndex + 2],
+                                        maskPtr[maskIndex + 1],
+                                        maskPtr[maskIndex]
+                                    );
+                                    
+                                    Color dstColor = Color.FromArgb(
+                                        dstPtr[dstIndex + 3],
+                                        dstPtr[dstIndex + 2],
+                                        dstPtr[dstIndex + 1],
+                                        dstPtr[dstIndex]
+                                    );
+                                    
+                                    Color blended = DrawingContext.MultiplyColors(maskColor, dstColor);
+                                    
+                                    dstPtr[dstIndex] = blended.B;
+                                    dstPtr[dstIndex + 1] = blended.G;
+                                    dstPtr[dstIndex + 2] = blended.R;
+                                    dstPtr[dstIndex + 3] = blended.A;
+                                }
                             }
                         }
                     }
+                    finally
+                    {
+                        _maskBitmap.UnlockBits(maskData);
+                        _bitmapModel.UnlockBits(dstData);
+                    }
+                    
                     // 마스크 비트맵 초기화
                     using (var g = Graphics.FromImage(_maskBitmap))
                     {

@@ -22,7 +22,7 @@ namespace Painter.Strategies
         {
             if (points.Count < 2) return;
 
-            context.LastDrawTime = DateTime.Now;
+            // LastDrawTime 제거
 
             // 첫 번째 선분 그리기
             DrawLineSegment(points[0], points[1], context);
