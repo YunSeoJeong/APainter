@@ -13,6 +13,8 @@ namespace Painter.Views
     {
         public PictureBox? PictureBox { get; private set; }
         private Bitmap? _currentBitmap;
+        private Bitmap? _tempBitmap; // 임시 비트맵 (완전 투명 초기값)
+        private Bitmap? _maskBitmap; // 마스크 비트맵 (완전 불투명 초기값)
         private Bitmap? _gridBackground; // 그리드 배경 비트맵
         private Size _lastGridSize; // 마지막으로 생성된 그리드 크기
         private float zoom = 1.0f; // 확대/축소 배율 (1.0 = 100%)
@@ -62,6 +64,8 @@ namespace Painter.Views
         public void SetBitmap(Bitmap bitmap)
         {
             _currentBitmap = bitmap; // 현재 비트맵 저장
+            _tempBitmap = null;
+            _maskBitmap = null;
             
             // 크기가 변경된 경우에만 그리드 배경 재생성
             if (_gridBackground == null || _lastGridSize != bitmap.Size)
@@ -73,6 +77,26 @@ namespace Painter.Views
                 _gridBackground = GridBackground.GenerateGrid(bitmap.Width, bitmap.Height);
                 _lastGridSize = bitmap.Size;
             }
+            
+            if (PictureBox != null)
+            {
+                if (PictureBox.InvokeRequired)
+                {
+                    PictureBox.Invoke(new Action(() => PictureBox.Invalidate()));
+                }
+                else
+                {
+                    PictureBox.Invalidate();
+                }
+            }
+        }
+
+        /// <summary>합성 비트맵 설정</summary>
+        public void SetCompositeBitmap(Bitmap mainBitmap, Bitmap? tempBitmap, Bitmap? maskBitmap)
+        {
+            _currentBitmap = mainBitmap;
+            _tempBitmap = tempBitmap;
+            _maskBitmap = maskBitmap;
             
             if (PictureBox != null)
             {
@@ -190,7 +214,33 @@ namespace Painter.Views
             e.Graphics.DrawImage(_gridBackground, new Point(0, 0));
             
             // 메인 비트맵 렌더링
-            e.Graphics.DrawImage(_currentBitmap, new Point(0, 0));
+            if (_tempBitmap != null)
+            {
+                // 임시 비트맵과 합성
+                using (var composite = new Bitmap(_currentBitmap.Width, _currentBitmap.Height))
+                using (var g = Graphics.FromImage(composite))
+                {
+                    g.DrawImage(_currentBitmap, Point.Empty);
+                    g.DrawImage(_tempBitmap, Point.Empty);
+                    e.Graphics.DrawImage(composite, Point.Empty);
+                }
+            }
+            else if (_maskBitmap != null)
+            {
+                // 마스크 비트맵과 합성
+                using (var composite = new Bitmap(_currentBitmap.Width, _currentBitmap.Height))
+                using (var g = Graphics.FromImage(composite))
+                {
+                    g.DrawImage(_currentBitmap, Point.Empty);
+                    g.DrawImage(_maskBitmap, Point.Empty);
+                    e.Graphics.DrawImage(composite, Point.Empty);
+                }
+            }
+            else
+            {
+                // 일반 메인 비트맵 렌더링
+                e.Graphics.DrawImage(_currentBitmap, Point.Empty);
+            }
             
             // 캔버스 경계선 그리기 (확대율 반영) - 점선 제거하고 실선으로 변경
             float borderWidth = 2f * zoom; // 확대율에 따라 두께 조절

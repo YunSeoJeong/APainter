@@ -8,6 +8,7 @@ namespace Painter.Interfaces
     {
         void Initialize();
         void SetBitmap(Bitmap bitmap);
+        void SetCompositeBitmap(Bitmap mainBitmap, Bitmap? tempBitmap, Bitmap? maskBitmap);
         event MouseEventHandler MouseDownEvent;
         event MouseEventHandler MouseMoveEvent;
         event MouseEventHandler MouseUpEvent;
