@@ -70,6 +70,26 @@ namespace Painter.Strategies
             _bitmapData = null;
         }
 
+        public static Color BlendColors(Color bg, Color fg)
+        {
+            float fgAlpha = fg.A / 255f;
+            float bgAlpha = bg.A / 255f;
+            float outAlpha = fgAlpha + (1 - fgAlpha) * bgAlpha;
+            
+            if (outAlpha <= 0.001f) return Color.Transparent;
+            
+            int r = (int)((fg.R * fgAlpha + bg.R * bgAlpha * (1 - fgAlpha)) / outAlpha);
+            int g = (int)((fg.G * fgAlpha + bg.G * bgAlpha * (1 - fgAlpha)) / outAlpha);
+            int b = (int)((fg.B * fgAlpha + bg.B * bgAlpha * (1 - fgAlpha)) / outAlpha);
+            
+            r = Math.Clamp(r, 0, 255);
+            g = Math.Clamp(g, 0, 255);
+            b = Math.Clamp(b, 0, 255);
+            
+            return Color.FromArgb((int)(outAlpha * 255), r, g, b);
+        }
+        
+        // 기존 SetPixel/GetPixel 유지
         public void SetPixel(int x, int y, Color color)
         {
             if (_bitmapData == null) return;

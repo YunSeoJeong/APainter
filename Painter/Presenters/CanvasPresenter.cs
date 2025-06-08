@@ -142,6 +142,16 @@ namespace Painter.Presenters
             System.Diagnostics.Debug.WriteLine($"Tool changed to: {_settingsModel.CurrentTool}");
         }
 
+        // 알파값 고려한 합연산 메서드
+        public static Color AdditiveBlend(Color bg, Color fg)
+        {
+            float fgWeight = fg.A / 255f;
+            int r = Math.Clamp((int)(bg.R + fg.R * fgWeight), 0, 255);
+            int g = Math.Clamp((int)(bg.G + fg.G * fgWeight), 0, 255);
+            int b = Math.Clamp((int)(bg.B + fg.B * fgWeight), 0, 255);
+            int a = Math.Max(bg.A, fg.A);
+            return Color.FromArgb(a, r, g, b);
+        }
 
         private void MergeTempBitmaps()
         {
@@ -177,13 +187,34 @@ namespace Painter.Presenters
                                 int srcIndex = y * srcStride + x * 4;
                                 int dstIndex = y * dstStride + x * 4;
                                 
+                                // 기존 픽셀 읽기
                                 byte srcA = srcPtr[srcIndex + 3];
-                                if (srcA > 0) // 투명하지 않은 픽셀만 복사
+                                if (srcA > 0) // 투명하지 않은 픽셀만 처리
                                 {
-                                    dstPtr[dstIndex] = srcPtr[srcIndex];     // B
-                                    dstPtr[dstIndex + 1] = srcPtr[srcIndex + 1]; // G
-                                    dstPtr[dstIndex + 2] = srcPtr[srcIndex + 2]; // R
-                                    dstPtr[dstIndex + 3] = srcPtr[srcIndex + 3]; // A
+                                    // 소스 픽셀
+                                    Color srcColor = Color.FromArgb(
+                                        srcPtr[srcIndex + 3],
+                                        srcPtr[srcIndex + 2],
+                                        srcPtr[srcIndex + 1],
+                                        srcPtr[srcIndex]
+                                    );
+                                    
+                                    // 대상 픽셀
+                                    Color dstColor = Color.FromArgb(
+                                        dstPtr[dstIndex + 3],
+                                        dstPtr[dstIndex + 2],
+                                        dstPtr[dstIndex + 1],
+                                        dstPtr[dstIndex]
+                                    );
+                                    
+                                    // 합연산 적용
+                                    Color blended = AdditiveBlend(dstColor, srcColor);
+                                    
+                                    // 결과 픽셀 설정
+                                    dstPtr[dstIndex] = blended.B;
+                                    dstPtr[dstIndex + 1] = blended.G;
+                                    dstPtr[dstIndex + 2] = blended.R;
+                                    dstPtr[dstIndex + 3] = blended.A;
                                 }
                             }
                         }
@@ -247,7 +278,8 @@ namespace Painter.Presenters
                                         dstPtr[dstIndex]
                                     );
                                     
-                                    Color blended = DrawingContext.MultiplyColors(maskColor, dstColor);
+                                    // 마스크 병합 시 합연산 적용
+                                    Color blended = AdditiveBlend(dstColor, maskColor);
                                     
                                     dstPtr[dstIndex] = blended.B;
                                     dstPtr[dstIndex + 1] = blended.G;
