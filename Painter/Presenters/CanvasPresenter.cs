@@ -158,20 +158,19 @@ namespace Painter.Presenters
             {
                 if (_tempBitmap != null)
                 {
-                    // 임시 비트맵 병합 (알파 블렌딩)
-                    for (int y = _dirtyRect.Top; y < _dirtyRect.Bottom; y++)
+                    // 변경: 픽셀 단위 복사 방식으로 변경 (미리보기 병합 로직과 동일)
+                    for (int y = 0; y < _tempBitmap.Height; y++)
                     {
-                        for (int x = _dirtyRect.Left; x < _dirtyRect.Right; x++)
+                        for (int x = 0; x < _tempBitmap.Width; x++)
                         {
                             var srcColor = _tempBitmap.GetPixel(x, y);
-                            if (srcColor.A > 0)
+                            if (srcColor.A > 0) // 투명하지 않은 픽셀만 복사
                             {
-                                var dstColor = _bitmapModel.GetPixel(x, y);
-                                var blended = DrawingContext.BlendColors(srcColor, dstColor);
-                                _bitmapModel.SetPixel(x, y, blended);
+                                _bitmapModel.SetPixel(x, y, srcColor);
                             }
                         }
                     }
+                    
                     // 임시 비트맵 초기화
                     using (var g = Graphics.FromImage(_tempBitmap))
                     {
@@ -182,9 +181,9 @@ namespace Painter.Presenters
                 if (_maskBitmap != null)
                 {
                     // 마스크 비트맵 병합 (곱연산)
-                    for (int y = _dirtyRect.Top; y < _dirtyRect.Bottom; y++)
+                    for (int y = 0; y < _maskBitmap.Height; y++)
                     {
-                        for (int x = _dirtyRect.Left; x < _dirtyRect.Right; x++)
+                        for (int x = 0; x < _maskBitmap.Width; x++)
                         {
                             var maskColor = _maskBitmap.GetPixel(x, y);
                             if (maskColor.A < 255)
