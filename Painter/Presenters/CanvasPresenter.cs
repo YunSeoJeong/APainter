@@ -179,148 +179,128 @@ namespace Painter.Presenters
             _bitmapModel.Lock();
             try
             {
-                if (_tempBitmap != null)
-                {
-                    // 고속 픽셀 복사를 위한 LockBits 사용
-                    var srcData = _tempBitmap.LockBits(
-                        new Rectangle(0, 0, _tempBitmap.Width, _tempBitmap.Height),
-                        ImageLockMode.ReadOnly,
-                        PixelFormat.Format32bppArgb
-                    );
-                    
-                    var dstData = _bitmapModel.LockBits(
-                        new Rectangle(0, 0, _bitmapModel.Width, _bitmapModel.Height),
-                        ImageLockMode.WriteOnly,
-                        PixelFormat.Format32bppArgb
-                    );
-                    
-                    try
-                    {
-                        byte* srcPtr = (byte*)srcData.Scan0;
-                        byte* dstPtr = (byte*)dstData.Scan0;
-                        int srcStride = srcData.Stride;
-                        int dstStride = dstData.Stride;
-                        
-                        for (int y = 0; y < _tempBitmap.Height; y++)
-                        {
-                            for (int x = 0; x < _tempBitmap.Width; x++)
-                            {
-                                int srcIndex = y * srcStride + x * 4;
-                                int dstIndex = y * dstStride + x * 4;
-                                
-                                // 기존 픽셀 읽기
-                                byte srcA = srcPtr[srcIndex + 3];
-                                if (srcA > 0) // 투명하지 않은 픽셀만 처리
-                                {
-                                    // 소스 픽셀
-                                    Color srcColor = Color.FromArgb(
-                                        srcPtr[srcIndex + 3],
-                                        srcPtr[srcIndex + 2],
-                                        srcPtr[srcIndex + 1],
-                                        srcPtr[srcIndex]
-                                    );
-                                    
-                                    // 대상 픽셀
-                                    Color dstColor = Color.FromArgb(
-                                        dstPtr[dstIndex + 3],
-                                        dstPtr[dstIndex + 2],
-                                        dstPtr[dstIndex + 1],
-                                        dstPtr[dstIndex]
-                                    );
-                                    
-                                    // 알파 블렌딩 적용
-                                    Color blended = AlphaBlend(srcColor, dstColor);
-                                    
-                                    // 결과 픽셀 설정
-                                    dstPtr[dstIndex] = blended.B;
-                                    dstPtr[dstIndex + 1] = blended.G;
-                                    dstPtr[dstIndex + 2] = blended.R;
-                                    dstPtr[dstIndex + 3] = blended.A;
-                                }
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        _tempBitmap.UnlockBits(srcData);
-                        _bitmapModel.UnlockBits(dstData);
-                    }
-                    
-                    // 임시 비트맵 초기화
-                    using (var g = Graphics.FromImage(_tempBitmap))
-                    {
-                        g.Clear(Color.Transparent);
-                    }
-                }
-
-                if (_maskBitmap != null)
-                {
-                    // 마스크 비트맵 병합 (고속 픽셀 연산)
-                    var maskData = _maskBitmap.LockBits(
-                        new Rectangle(0, 0, _maskBitmap.Width, _maskBitmap.Height),
-                        ImageLockMode.ReadOnly,
-                        PixelFormat.Format32bppArgb
-                    );
-                    
-                    var dstData = _bitmapModel.LockBits(
-                        new Rectangle(0, 0, _bitmapModel.Width, _bitmapModel.Height),
-                        ImageLockMode.ReadWrite,
-                        PixelFormat.Format32bppArgb
-                    );
-                    
-                    try
-                    {
-                        byte* maskPtr = (byte*)maskData.Scan0;
-                        byte* dstPtr = (byte*)dstData.Scan0;
-                        int maskStride = maskData.Stride;
-                        int dstStride = dstData.Stride;
-                        
-                        for (int y = 0; y < _maskBitmap.Height; y++)
-                        {
-                            for (int x = 0; x < _maskBitmap.Width; x++)
-                            {
-                                int maskIndex = y * maskStride + x * 4;
-                                int dstIndex = y * dstStride + x * 4;
-                                
-                                byte maskA = maskPtr[maskIndex + 3];
-                                if (maskA < 255)
-                                {
-                                    Color maskColor = Color.FromArgb(
-                                        maskPtr[maskIndex + 3],
-                                        maskPtr[maskIndex + 2],
-                                        maskPtr[maskIndex + 1],
-                                        maskPtr[maskIndex]
-                                    );
-                                    
-                                    Color dstColor = Color.FromArgb(
-                                        dstPtr[dstIndex + 3],
-                                        dstPtr[dstIndex + 2],
-                                        dstPtr[dstIndex + 1],
-                                        dstPtr[dstIndex]
-                                    );
-                                    
-                                    // 현재 메인 비트맵 알파와 마스크 알파 중 Min 값 선택
-                                    byte currentAlpha = dstPtr[dstIndex + 3];
-                                    byte maskAlpha = maskPtr[maskIndex + 3];
-                                    byte newAlpha = Math.Min(currentAlpha, maskAlpha);
-                                    dstPtr[dstIndex + 3] = newAlpha;
-                                }
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        _maskBitmap.UnlockBits(maskData);
-                        _bitmapModel.UnlockBits(dstData);
-                    }
-                    
-                    // 마스크 비트맵 초기화 제거 (지속성 유지)
-                }
+                MergeTempBitmapLayer();
+                MergeMaskBitmapLayer();
             }
             finally
             {
                 _bitmapModel.Unlock();
             }
+        }
+
+        private void MergeTempBitmapLayer()
+        {
+            if (_tempBitmap == null) return;
+
+            var srcData = _tempBitmap.LockBits(
+                new Rectangle(0, 0, _tempBitmap.Width, _tempBitmap.Height),
+                ImageLockMode.ReadOnly,
+                PixelFormat.Format32bppArgb
+            );
+            
+            var dstData = _bitmapModel.LockBits(
+                new Rectangle(0, 0, _bitmapModel.Width, _bitmapModel.Height),
+                ImageLockMode.WriteOnly,
+                PixelFormat.Format32bppArgb
+            );
+            
+            try
+            {
+                byte* srcPtr = (byte*)srcData.Scan0;
+                byte* dstPtr = (byte*)dstData.Scan0;
+                int srcStride = srcData.Stride;
+                int dstStride = dstData.Stride;
+                
+                for (int y = 0; y < _tempBitmap.Height; y++)
+                {
+                    for (int x = 0; x < _tempBitmap.Width; x++)
+                    {
+                        int srcIndex = y * srcStride + x * 4;
+                        int dstIndex = y * dstStride + x * 4;
+                        
+                        byte srcA = srcPtr[srcIndex + 3];
+                        if (srcA > 0)
+                        {
+                            Color srcColor = ReadPixel(srcPtr, srcIndex);
+                            Color dstColor = ReadPixel(dstPtr, dstIndex);
+                            
+                            Color blended = AlphaBlend(srcColor, dstColor);
+                            
+                            dstPtr[dstIndex] = blended.B;
+                            dstPtr[dstIndex + 1] = blended.G;
+                            dstPtr[dstIndex + 2] = blended.R;
+                            dstPtr[dstIndex + 3] = blended.A;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                _tempBitmap.UnlockBits(srcData);
+                _bitmapModel.UnlockBits(dstData);
+            }
+            
+            using (var g = Graphics.FromImage(_tempBitmap))
+            {
+                g.Clear(Color.Transparent);
+            }
+        }
+        
+        private void MergeMaskBitmapLayer()
+        {
+            if (_maskBitmap == null) return;
+
+            var maskData = _maskBitmap.LockBits(
+                new Rectangle(0, 0, _maskBitmap.Width, _maskBitmap.Height),
+                ImageLockMode.ReadOnly,
+                PixelFormat.Format32bppArgb
+            );
+            
+            var dstData = _bitmapModel.LockBits(
+                new Rectangle(0, 0, _bitmapModel.Width, _bitmapModel.Height),
+                ImageLockMode.ReadWrite,
+                PixelFormat.Format32bppArgb
+            );
+            
+            try
+            {
+                byte* maskPtr = (byte*)maskData.Scan0;
+                byte* dstPtr = (byte*)dstData.Scan0;
+                int maskStride = maskData.Stride;
+                int dstStride = dstData.Stride;
+                
+                for (int y = 0; y < _maskBitmap.Height; y++)
+                {
+                    for (int x = 0; x < _maskBitmap.Width; x++)
+                    {
+                        int maskIndex = y * maskStride + x * 4;
+                        int dstIndex = y * dstStride + x * 4;
+                        
+                        byte maskA = maskPtr[maskIndex + 3];
+                        if (maskA < 255)
+                        {
+                            byte currentAlpha = dstPtr[dstIndex + 3];
+                            byte newAlpha = Math.Min(currentAlpha, maskA);
+                            dstPtr[dstIndex + 3] = newAlpha;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                _maskBitmap.UnlockBits(maskData);
+                _bitmapModel.UnlockBits(dstData);
+            }
+        }
+        
+        private static Color ReadPixel(byte* ptr, int index)
+        {
+            return Color.FromArgb(
+                ptr[index + 3],
+                ptr[index + 2],
+                ptr[index + 1],
+                ptr[index]
+            );
         }
 
         private Rectangle UpdateDirtyRect(Rectangle current, Rectangle newArea)
