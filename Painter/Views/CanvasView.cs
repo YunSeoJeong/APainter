@@ -93,11 +93,14 @@ namespace Painter.Views
         }
 
         /// <summary>합성 비트맵 설정</summary>
-        public void SetCompositeBitmap(Bitmap mainBitmap, Bitmap? tempBitmap, Bitmap? maskBitmap)
+        private ToolType _currentTool; // 현재 도구 상태 저장
+
+        public void SetCompositeBitmap(Bitmap mainBitmap, Bitmap? tempBitmap, Bitmap? maskBitmap, ToolType tool)
         {
             _currentBitmap = mainBitmap;
             _tempBitmap = tempBitmap;
             _maskBitmap = maskBitmap;
+            _currentTool = tool; // 도구 상태 업데이트
             
             if (PictureBox != null)
             {
@@ -215,20 +218,9 @@ namespace Painter.Views
             e.Graphics.DrawImage(_gridBackground, new Point(0, 0));
             
             // 메인 비트맵 렌더링
-            if (_tempBitmap != null)
+            if (_currentTool == ToolType.Eraser && _maskBitmap != null)
             {
-                // 임시 비트맵과 합성
-                using (var composite = new Bitmap(_currentBitmap.Width, _currentBitmap.Height))
-                using (var g = Graphics.FromImage(composite))
-                {
-                    g.DrawImage(_currentBitmap, Point.Empty);
-                    g.DrawImage(_tempBitmap, Point.Empty);
-                    e.Graphics.DrawImage(composite, Point.Empty);
-                }
-            }
-            else if (_maskBitmap != null)
-            {
-                // 마스크 비트맵과 Min 함수 기반 합성
+                // 지우개 도구: Min 함수 기반 합성
                 using (var composite = new Bitmap(_currentBitmap.Width, _currentBitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
                 {
                     var rect = new Rectangle(0, 0, _currentBitmap.Width, _currentBitmap.Height);
@@ -266,6 +258,17 @@ namespace Painter.Views
                     _maskBitmap.UnlockBits(maskData);
                     composite.UnlockBits(compositeData);
                     
+                    e.Graphics.DrawImage(composite, Point.Empty);
+                }
+            }
+            else if (_tempBitmap != null)
+            {
+                // 브러시/펜슬 도구: 표준 알파 블렌딩
+                using (var composite = new Bitmap(_currentBitmap.Width, _currentBitmap.Height))
+                using (var g = Graphics.FromImage(composite))
+                {
+                    g.DrawImage(_currentBitmap, Point.Empty);
+                    g.DrawImage(_tempBitmap, Point.Empty);
                     e.Graphics.DrawImage(composite, Point.Empty);
                 }
             }

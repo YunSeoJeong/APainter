@@ -141,7 +141,8 @@ namespace Painter.Presenters
             _view.SetCompositeBitmap(
                 _bitmapModel.GetBitmap(),
                 _tempBitmap,
-                _settingsModel.CurrentTool == ToolType.Eraser ? _maskBitmap : null
+                _maskBitmap, // 항상 전달 (도구에 따라 사용 여부 결정)
+                _settingsModel.CurrentTool // 현재 도구 전달
             );
         }
 
