@@ -142,14 +142,25 @@ namespace Painter.Presenters
             System.Diagnostics.Debug.WriteLine($"Tool changed to: {_settingsModel.CurrentTool}");
         }
 
-        // 알파값 고려한 합연산 메서드
-        public static Color AdditiveBlend(Color bg, Color fg)
+        // 알파 블렌딩 메서드 (표준 오버 연산)
+        public static Color AlphaBlend(Color src, Color dst)
         {
-            float fgWeight = fg.A / 255f;
-            int r = Math.Clamp((int)(bg.R + fg.R * fgWeight), 0, 255);
-            int g = Math.Clamp((int)(bg.G + fg.G * fgWeight), 0, 255);
-            int b = Math.Clamp((int)(bg.B + fg.B * fgWeight), 0, 255);
-            int a = Math.Max(bg.A, fg.A);
+            if (src.A == 0) return dst; // 소스가 완전 투명하면 대상 픽셀 반환
+            if (src.A == 255) return src; // 소스가 완전 불투명하면 소스 픽셀 반환
+
+            int srcA = src.A;
+            int invSrcA = 255 - srcA;
+
+            int r = (src.R * srcA + dst.R * invSrcA) / 255;
+            int g = (src.G * srcA + dst.G * invSrcA) / 255;
+            int b = (src.B * srcA + dst.B * invSrcA) / 255;
+            int a = srcA + (dst.A * invSrcA) / 255;
+
+            r = Math.Clamp(r, 0, 255);
+            g = Math.Clamp(g, 0, 255);
+            b = Math.Clamp(b, 0, 255);
+            a = Math.Clamp(a, 0, 255);
+
             return Color.FromArgb(a, r, g, b);
         }
 
@@ -207,8 +218,8 @@ namespace Painter.Presenters
                                         dstPtr[dstIndex]
                                     );
                                     
-                                    // 합연산 적용
-                                    Color blended = AdditiveBlend(dstColor, srcColor);
+                                    // 알파 블렌딩 적용
+                                    Color blended = AlphaBlend(srcColor, dstColor);
                                     
                                     // 결과 픽셀 설정
                                     dstPtr[dstIndex] = blended.B;
@@ -278,8 +289,8 @@ namespace Painter.Presenters
                                         dstPtr[dstIndex]
                                     );
                                     
-                                    // 마스크 병합 시 합연산 적용
-                                    Color blended = AdditiveBlend(dstColor, maskColor);
+                                    // 마스크 병합 시 알파 블렌딩 적용
+                                    Color blended = AlphaBlend(maskColor, dstColor);
                                     
                                     dstPtr[dstIndex] = blended.B;
                                     dstPtr[dstIndex + 1] = blended.G;
