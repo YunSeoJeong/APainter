@@ -67,10 +67,11 @@ namespace Painter.Strategies
                                 float erasureAmount = baseOpacity * distanceFactor;
                                 
                                 // 마스크 비트맵 방식으로 지우기
-                                Color existingColor = context.GetPixel(px, py);
-                                int newAlpha = (int)(existingColor.A * (1 - erasureAmount)); // 알파 감소
-                                newAlpha = Math.Clamp(newAlpha, 0, 255);
-                                Color newColor = Color.FromArgb(newAlpha, existingColor.R, existingColor.G, existingColor.B);
+                                Color currentColor = context.GetPixel(px, py);
+                                float newMaskValue = (1 - erasureAmount) * 255;
+                                byte currentAlpha = currentColor.A;
+                                byte newAlpha = (byte)Math.Min(currentAlpha, newMaskValue);
+                                Color newColor = Color.FromArgb(newAlpha, 0, 0, 0);
                                 context.SetPixel(px, py, newColor);
                             }
                         }

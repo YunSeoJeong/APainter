@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D; // Matrix 클래스를 위해 추가
+using System.Drawing.Imaging; // PixelFormat, ImageLockMode 추가
 using System.Windows.Forms;
 using Painter.Interfaces;
 using Painter.Presenters;
@@ -227,12 +228,44 @@ namespace Painter.Views
             }
             else if (_maskBitmap != null)
             {
-                // 마스크 비트맵과 합성
-                using (var composite = new Bitmap(_currentBitmap.Width, _currentBitmap.Height))
-                using (var g = Graphics.FromImage(composite))
+                // 마스크 비트맵과 Min 함수 기반 합성
+                using (var composite = new Bitmap(_currentBitmap.Width, _currentBitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
                 {
-                    g.DrawImage(_currentBitmap, Point.Empty);
-                    g.DrawImage(_maskBitmap, Point.Empty);
+                    var rect = new Rectangle(0, 0, _currentBitmap.Width, _currentBitmap.Height);
+                    var mainData = _currentBitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    var maskData = _maskBitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    var compositeData = composite.LockBits(rect, System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    
+                    unsafe
+                    {
+                        byte* mainPtr = (byte*)mainData.Scan0;
+                        byte* maskPtr = (byte*)maskData.Scan0;
+                        byte* compPtr = (byte*)compositeData.Scan0;
+                        
+                        for (int y = 0; y < _currentBitmap.Height; y++)
+                        {
+                            for (int x = 0; x < _currentBitmap.Width; x++)
+                            {
+                                int idx = y * mainData.Stride + x * 4;
+                                
+                                // 메인 알파와 마스크 알파 중 Min 값 선택
+                                byte mainA = mainPtr[idx + 3];
+                                byte maskA = maskPtr[idx + 3];
+                                byte newA = Math.Min(mainA, maskA);
+                                
+                                // RGB는 메인 비트맵 유지
+                                compPtr[idx] = mainPtr[idx];     // B
+                                compPtr[idx + 1] = mainPtr[idx + 1]; // G
+                                compPtr[idx + 2] = mainPtr[idx + 2]; // R
+                                compPtr[idx + 3] = newA;         // A
+                            }
+                        }
+                    }
+                    
+                    _currentBitmap.UnlockBits(mainData);
+                    _maskBitmap.UnlockBits(maskData);
+                    composite.UnlockBits(compositeData);
+                    
                     e.Graphics.DrawImage(composite, Point.Empty);
                 }
             }

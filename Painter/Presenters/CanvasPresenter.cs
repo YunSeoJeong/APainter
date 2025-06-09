@@ -74,6 +74,15 @@ namespace Painter.Presenters
                 MergeTempBitmaps();
                 _dirtyRect = Rectangle.Empty;
                 _view.SetBitmap(_bitmapModel.GetBitmap());
+                
+                // 마스크 비트맵 초기화 (흰색으로 재설정)
+                if (_maskBitmap != null)
+                {
+                    using (var g = Graphics.FromImage(_maskBitmap))
+                    {
+                        g.Clear(Color.White);
+                    }
+                }
             }
         }
         
@@ -289,13 +298,11 @@ namespace Painter.Presenters
                                         dstPtr[dstIndex]
                                     );
                                     
-                                    // 마스크 병합 시 알파 블렌딩 적용
-                                    Color blended = AlphaBlend(maskColor, dstColor);
-                                    
-                                    dstPtr[dstIndex] = blended.B;
-                                    dstPtr[dstIndex + 1] = blended.G;
-                                    dstPtr[dstIndex + 2] = blended.R;
-                                    dstPtr[dstIndex + 3] = blended.A;
+                                    // 현재 메인 비트맵 알파와 마스크 알파 중 Min 값 선택
+                                    byte currentAlpha = dstPtr[dstIndex + 3];
+                                    byte maskAlpha = maskPtr[maskIndex + 3];
+                                    byte newAlpha = Math.Min(currentAlpha, maskAlpha);
+                                    dstPtr[dstIndex + 3] = newAlpha;
                                 }
                             }
                         }
@@ -306,11 +313,7 @@ namespace Painter.Presenters
                         _bitmapModel.UnlockBits(dstData);
                     }
                     
-                    // 마스크 비트맵 초기화
-                    using (var g = Graphics.FromImage(_maskBitmap))
-                    {
-                        g.Clear(Color.White);
-                    }
+                    // 마스크 비트맵 초기화 제거 (지속성 유지)
                 }
             }
             finally
