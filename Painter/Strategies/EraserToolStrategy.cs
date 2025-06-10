@@ -26,8 +26,8 @@ namespace Painter.Strategies
             const double filterFactor = 0.2;
             _smoothedSpeed = _smoothedSpeed * (1 - filterFactor) + speed * filterFactor;
 
-            // 속도 감응: 빠를수록 지우기 강도 감소 (기본 투명도 0.9 ~ 최소 0.3)
-            float baseOpacity = 0.9f;
+            // 속도 감응: 빠를수록 지우기 강도 감소 (기본 투명도 1.0 ~ 최소 0.3)
+            float baseOpacity = 1.0f;
             float adjustedOpacity = (float)(baseOpacity - Math.Clamp(_smoothedSpeed * 0.15, 0, 0.6));
 
             DrawEraserLine(context, adjustedOpacity, radius);
@@ -68,11 +68,11 @@ namespace Painter.Strategies
                             if (px >= 0 && py >= 0)
                             {
                                 // 고체 코어와 감소된 페이드 영역
-                                float solidCore = radius * 0.7f;
+                                float solidCore = radius * 0.85f; // 중심 영역 확대 (70% → 85%)
                                 float fadeLength = radius - solidCore;
                                 float distanceFactor;
                                 if (distance <= solidCore)
-                                    distanceFactor = 1.0f;
+                                    distanceFactor = 1.0f; // 중심부 완전 지우기
                                 else
                                     distanceFactor = 1.0f - (distance - solidCore) / fadeLength;
                                 float erasureAmount = baseOpacity * distanceFactor;
