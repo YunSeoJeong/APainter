@@ -102,26 +102,31 @@ namespace Painter.Views
             _currentBitmap = mainBitmap;
             _tempBitmap = tempBitmap;
             _maskBitmap = maskBitmap;
-            _currentTool = tool; // 도구 상태 업데이트
+            _currentTool = tool;
+
+            // DirtyRect를 뷰포트 좌표계로 변환
+            Rectangle viewDirtyRect = BitmapToView(dirtyRect);
+            
             lock (_dirtyLock)
             {
-                _dirtyRect = dirtyRect; // 변경 영역 저장
+                _dirtyRect = viewDirtyRect;
             }
             
             if (PictureBox != null)
             {
                 if (PictureBox.InvokeRequired)
                 {
-                    PictureBox.Invoke(new Action(() => PictureBox.Invalidate(_dirtyRect)));
+                    PictureBox.Invoke(new Action(() => PictureBox.Invalidate(viewDirtyRect)));
                 }
                 else
                 {
-                    PictureBox.Invalidate(_dirtyRect);
+                    PictureBox.Invalidate(viewDirtyRect);
                 }
             }
+            
             lock (_dirtyLock)
             {
-                _dirtyRect = Rectangle.Empty; // 변경 영역 사용 후 즉시 초기화
+                _dirtyRect = Rectangle.Empty;
             }
         }
 
@@ -144,6 +149,27 @@ namespace Painter.Views
             PointF[] points = { new PointF(viewPoint.X, viewPoint.Y) };
             inverse.TransformPoints(points);
             return new Point((int)points[0].X, (int)points[0].Y);
+        }
+
+        // 비트맵 좌표를 뷰포트 좌표로 변환
+        private Point BitmapToView(Point bitmapPoint)
+        {
+            if (PictureBox == null || _currentBitmap == null)
+                return bitmapPoint;
+
+            PointF[] points = { new PointF(bitmapPoint.X, bitmapPoint.Y) };
+            _transform.TransformPoints(points);
+            return new Point((int)points[0].X, (int)points[0].Y);
+        }
+
+        // 사각형을 비트맵 좌표에서 뷰포트 좌표로 변환
+        private Rectangle BitmapToView(Rectangle bitmapRect)
+        {
+            Point topLeft = BitmapToView(new Point(bitmapRect.Left, bitmapRect.Top));
+            Point bottomRight = BitmapToView(new Point(bitmapRect.Right, bitmapRect.Bottom));
+            return new Rectangle(topLeft.X, topLeft.Y,
+                                bottomRight.X - topLeft.X,
+                                bottomRight.Y - topLeft.Y);
         }
 
         // 변환 행렬을 업데이트하는 메서드
