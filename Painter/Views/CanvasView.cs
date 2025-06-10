@@ -23,6 +23,8 @@ namespace Painter.Views
         private Matrix _transform; // 변환 행렬
         private bool _isPanning = false;
         private Point _lastPanPoint;
+        private Rectangle _dirtyRect = Rectangle.Empty; // 변경된 영역 추적
+        private readonly object _dirtyLock = new object(); // _dirtyRect 스레드 동기화 객체
 
         /// <summary>현재 확대/축소 배율</summary>
         public float Zoom => zoom;
@@ -95,23 +97,31 @@ namespace Painter.Views
         /// <summary>합성 비트맵 설정</summary>
         private ToolType _currentTool; // 현재 도구 상태 저장
 
-        public void SetCompositeBitmap(Bitmap mainBitmap, Bitmap? tempBitmap, Bitmap? maskBitmap, ToolType tool)
+        public void SetCompositeBitmap(Bitmap mainBitmap, Bitmap? tempBitmap, Bitmap? maskBitmap, ToolType tool, Rectangle dirtyRect)
         {
             _currentBitmap = mainBitmap;
             _tempBitmap = tempBitmap;
             _maskBitmap = maskBitmap;
             _currentTool = tool; // 도구 상태 업데이트
+            lock (_dirtyLock)
+            {
+                _dirtyRect = dirtyRect; // 변경 영역 저장
+            }
             
             if (PictureBox != null)
             {
                 if (PictureBox.InvokeRequired)
                 {
-                    PictureBox.Invoke(new Action(() => PictureBox.Invalidate()));
+                    PictureBox.Invoke(new Action(() => PictureBox.Invalidate(_dirtyRect)));
                 }
                 else
                 {
-                    PictureBox.Invalidate();
+                    PictureBox.Invalidate(_dirtyRect);
                 }
+            }
+            lock (_dirtyLock)
+            {
+                _dirtyRect = Rectangle.Empty; // 변경 영역 사용 후 즉시 초기화
             }
         }
 
@@ -120,6 +130,13 @@ namespace Painter.Views
         {
             if (PictureBox == null || _currentBitmap == null)
                 return viewPoint;
+
+            // 경계 검사 추가
+            if (viewPoint.X < 0 || viewPoint.Y < 0 ||
+                viewPoint.X >= PictureBox.Width || viewPoint.Y >= PictureBox.Height)
+            {
+                return Point.Empty;
+            }
 
             // 변환 행렬의 역행렬을 사용해 뷰 좌표를 비트맵 좌표로 변환
             Matrix inverse = _transform.Clone();
@@ -203,6 +220,7 @@ namespace Painter.Views
                 MouseUpEvent?.Invoke(sender, new MouseEventArgs(e.Button, e.Clicks, point.X, point.Y, e.Delta));
             }
         }
+        
         // Paint 이벤트 핸들러: 변환 행렬 적용 및 픽셀 보간 설정
         private void PictureBox_Paint(object? sender, PaintEventArgs e)
         {
@@ -213,52 +231,104 @@ namespace Painter.Views
             e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
 
             e.Graphics.Transform = _transform;
-            
+
             // 그리드 배경 렌더링
             e.Graphics.DrawImage(_gridBackground, new Point(0, 0));
-            
+
             // 메인 비트맵 렌더링
             if (_currentTool == ToolType.Eraser && _maskBitmap != null)
             {
                 // 지우개 도구: Min 함수 기반 합성
-                using (var composite = new Bitmap(_currentBitmap.Width, _currentBitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                // DirtyRect가 비어있으면 전체 영역 사용
+                // Clamp the rectangle to bitmap boundaries
+                // 경계 검사 강화: 음수 좌표 방지 및 스레드 안전성 확보
+                Rectangle rect;
+                lock (_dirtyLock)
                 {
-                    var rect = new Rectangle(0, 0, _currentBitmap.Width, _currentBitmap.Height);
+                    if (_dirtyRect.IsEmpty)
+                    {
+                        rect = new Rectangle(0, 0, _currentBitmap.Width, _currentBitmap.Height);
+                    }
+                    else
+                    {
+                        // 비트맵 경계 내로 dirtyRect 클램핑
+                        Rectangle bounds = new Rectangle(0, 0, _currentBitmap.Width, _currentBitmap.Height);
+                        rect = Rectangle.Intersect(_dirtyRect, bounds);
+                        
+                        // 교차 영역이 없으면 전체 영역 사용
+                        if (rect.IsEmpty)
+                        {
+                            rect = new Rectangle(0, 0, _currentBitmap.Width, _currentBitmap.Height);
+                        }
+                    }
+                }
+                
+                // 추가 경계 검사
+                if (rect.Width <= 0 || rect.Height <= 0)
+                {
+                    return;
+                }
+                    
+                // DirtyRect 영역만큼의 비트맵 생성
+                using (var composite = new Bitmap(rect.Width, rect.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                {
+                    // Create a new rectangle for the compositing operation that matches the composite bitmap size
+                    var compositeRect = new Rectangle(0, 0, rect.Width, rect.Height);
+                    
                     var mainData = _currentBitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                     var maskData = _maskBitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                    var compositeData = composite.LockBits(rect, System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                    
+                    var compositeData = composite.LockBits(compositeRect, System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
                     unsafe
                     {
                         byte* mainPtr = (byte*)mainData.Scan0;
                         byte* maskPtr = (byte*)maskData.Scan0;
                         byte* compPtr = (byte*)compositeData.Scan0;
+
+                        int bitmapWidth = _currentBitmap.Width;
+                        int bitmapHeight = _currentBitmap.Height;
+                        int mainStride = mainData.Stride;
+                        int compositeStride = compositeData.Stride;
                         
-                        for (int y = 0; y < _currentBitmap.Height; y++)
+                        
+                        for (int y = 0; y < rect.Height; y++)
                         {
-                            for (int x = 0; x < _currentBitmap.Width; x++)
+                            int srcY = rect.Top + y;
+                            
+                            // Skip if out of bounds (shouldn't happen after clamping, but just in case)
+                            if (srcY < 0 || srcY >= bitmapHeight) continue;
+                            
+                            for (int x = 0; x < rect.Width; x++)
                             {
-                                int idx = y * mainData.Stride + x * 4;
+                                int srcX = rect.Left + x;
+                                if (srcX < 0 || srcX >= bitmapWidth) continue;
                                 
-                                // 메인 알파와 마스크 알파 중 Min 값 선택
-                                byte mainA = mainPtr[idx + 3];
-                                byte maskA = maskPtr[idx + 3];
+                                // Validate pixel offset
+                                int srcOffset = srcY * mainStride + srcX * 4;
+                                if (srcOffset < 0 || srcOffset + 3 >= mainStride * bitmapHeight) continue;
+                                
+                                int destOffset = y * compositeStride + x * 4;
+                                if (destOffset < 0 || destOffset + 3 >= compositeStride * rect.Height) continue;
+                                
+                                // Get alpha values using validated offsets
+                                byte mainA = mainPtr[srcOffset + 3];
+                                byte maskA = maskPtr[srcOffset + 3];
                                 byte newA = Math.Min(mainA, maskA);
-                                
+
                                 // RGB는 메인 비트맵 유지
-                                compPtr[idx] = mainPtr[idx];     // B
-                                compPtr[idx + 1] = mainPtr[idx + 1]; // G
-                                compPtr[idx + 2] = mainPtr[idx + 2]; // R
-                                compPtr[idx + 3] = newA;         // A
+                                compPtr[destOffset] = mainPtr[srcOffset];     // B
+                                compPtr[destOffset + 1] = mainPtr[srcOffset + 1]; // G
+                                compPtr[destOffset + 2] = mainPtr[srcOffset + 2]; // R
+                                compPtr[destOffset + 3] = newA;         // A
                             }
                         }
                     }
-                    
+
                     _currentBitmap.UnlockBits(mainData);
                     _maskBitmap.UnlockBits(maskData);
                     composite.UnlockBits(compositeData);
-                    
-                    e.Graphics.DrawImage(composite, Point.Empty);
+
+                    e.Graphics.DrawImage(composite, new Point(rect.Left, rect.Top));
                 }
             }
             else if (_tempBitmap != null)
@@ -277,16 +347,23 @@ namespace Painter.Views
                 // 일반 메인 비트맵 렌더링
                 e.Graphics.DrawImage(_currentBitmap, Point.Empty);
             }
-            
+
             // 캔버스 경계선 그리기 (확대율 반영) - 점선 제거하고 실선으로 변경
+            // 클리핑 없이 항상 전체 캔버스 경계선을 그림
             float borderWidth = 2f * zoom; // 확대율에 따라 두께 조절
             using (Pen borderPen = new Pen(Color.DarkGray, borderWidth))
             {
-                // 점선 스타일 제거 (기본값인 실선 사용)
+                // 임시로 클리핑 해제 후 경계선 그림
+                var oldClip = e.Graphics.Clip;
+                e.Graphics.ResetClip();
+                
                 e.Graphics.DrawRectangle(
-                    borderPen, 
+                    borderPen,
                     new Rectangle(0, 0, _currentBitmap.Width - 1, _currentBitmap.Height - 1)
                 );
+                
+                // 원래 클리핑 영역 복원
+                e.Graphics.Clip = oldClip;
             }
         }
 
