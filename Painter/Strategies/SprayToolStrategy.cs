@@ -7,6 +7,14 @@ namespace Painter.Strategies
 {
     public class SprayToolStrategy : IToolStrategy
     {
+        private float _brushSize = 10;
+        public float Radius => _brushSize;
+        
+        public void SetBrushSize(float brushSize)
+        {
+            _brushSize = brushSize;
+        }
+        
         private Point _lastPoint;
         private DateTime _lastDrawTime = DateTime.Now;
         private double _smoothedSpeed = 0;
@@ -33,7 +41,7 @@ namespace Painter.Strategies
 
         private void SprayPaint(DrawingContext context, int density)
         {
-            int radius = context.BrushSize / 2;
+            int radius = (int)(_brushSize / 2);
             for (int i = 0; i < density; i++)
             {
                 // 무작위 각도 및 거리 생성

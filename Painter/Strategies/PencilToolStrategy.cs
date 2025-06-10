@@ -9,9 +9,14 @@ namespace Painter.Strategies
         private Point _lastPoint;
         private DateTime _lastDrawTime = DateTime.Now;
         private double _smoothedSpeed = 0;
+        private float _brushSize; // 브러시 크기 저장 필드 추가
+
+        public float Radius => _brushSize; // 반지름 속성 구현
 
         public void Draw(DrawingContext context)
         {
+            // 반지름 경계 처리: radius 바깥 영역 무시
+            float radius = Radius;
             // 속도 계산 및 필터링
             double speed = CalculateSpeed(context.StartPoint, _lastPoint, _lastDrawTime);
             _lastPoint = context.EndPoint;
@@ -25,11 +30,11 @@ namespace Painter.Strategies
             float baseOpacity = 0.4f; // 기본 투명도 감소 (0.8 → 0.4)
             float adjustedOpacity = (float)(baseOpacity + Math.Clamp(_smoothedSpeed * 0.08, 0, 0.3));
             
-            // 알파 블렌딩 적용한 커스텀 드로잉
-            DrawLineWithBlending(context, adjustedOpacity);
+            // 알파 블렌딩 적용한 커스텀 드로잉 (radius 전달)
+            DrawLineWithBlending(context, adjustedOpacity, radius);
         }
 
-        private void DrawLineWithBlending(DrawingContext context, float baseOpacity)
+        private void DrawLineWithBlending(DrawingContext context, float baseOpacity, float radius)
         {
             int brushSize = context.BrushSize;
             Point start = context.StartPoint;
@@ -54,17 +59,17 @@ namespace Painter.Strategies
                 {
                     for (int by = -brushSize; by <= brushSize; by++)
                     {
-                        // 브러시 범위 내에서만 처리
-                        if (bx * bx + by * by <= brushSize * brushSize)
+                        // 브러시 범위 내에서만 처리 (반지름 경계 강화)
+                        float distance = (float)Math.Sqrt(bx*bx + by*by);
+                        if (distance <= radius)
                         {
                             int px = x0 + bx;
                             int py = y0 + by;
                             
                             if (px >= 0 && py >= 0)
                             {
-                                // 거리 비례 투명도 계산 (중앙 100% → 가장자리 0%)
-                                double distance = Math.Sqrt(bx*bx + by*by);
-                                float distanceFactor = 1.0f - (float)Math.Clamp(distance / brushSize, 0, 1);
+                                // 거리 비례 투명도 계산 (중앙 100% → 경계 0%)
+                                float distanceFactor = 1.0f - (float)Math.Clamp(distance / radius, 0, 1);
                                 float pixelOpacity = baseOpacity * distanceFactor;
                                 
                                 // MAX 함수 기반 알파 처리 (과누적 문제 해결)
@@ -102,6 +107,11 @@ namespace Painter.Strategies
             }
         }
 
+
+        public void SetBrushSize(float brushSize)
+        {
+            _brushSize = brushSize;
+        }
 
         private double CalculateSpeed(Point current, Point previous, DateTime lastTime)
         {

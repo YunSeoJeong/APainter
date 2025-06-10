@@ -129,6 +129,7 @@ namespace Painter.Presenters
         private void DrawLine(Point start, Point end)
         {
             var toolStrategy = _toolStrategyFactory.CreateToolStrategy(_settingsModel.CurrentTool);
+            toolStrategy.SetBrushSize(_settingsModel.BrushSize); // 브러시 크기 설정
             
             // 현재 도구에 따라 적절한 비트맵 선택
             Bitmap targetBitmap = _settingsModel.CurrentTool == ToolType.Eraser ? _maskBitmap : _tempBitmap;
@@ -148,13 +149,14 @@ namespace Painter.Presenters
                 toolStrategy.Draw(context);
             }
             
-            // Dirty Rect 업데이트 (브러시 크기 고려)
-            int halfBrush = _settingsModel.BrushSize / 2;
+            // Dirty Rect 업데이트 (도구 반지름 활용)
+            int radiusInt = (int)Math.Ceiling(toolStrategy.Radius);
+            int diameter = radiusInt * 2;
             Rectangle lineRect = new Rectangle(
-                Math.Min(start.X, end.X) - halfBrush,
-                Math.Min(start.Y, end.Y) - halfBrush,
-                Math.Abs(end.X - start.X) + _settingsModel.BrushSize,
-                Math.Abs(end.Y - start.Y) + _settingsModel.BrushSize
+                Math.Min(start.X, end.X) - radiusInt,
+                Math.Min(start.Y, end.Y) - radiusInt,
+                Math.Abs(end.X - start.X) + diameter,
+                Math.Abs(end.Y - start.Y) + diameter
             );
             _dirtyRect = UpdateDirtyRect(_dirtyRect, lineRect);
             
