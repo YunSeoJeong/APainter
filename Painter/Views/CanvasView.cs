@@ -252,13 +252,27 @@ namespace Painter.Views
         {
             if (PictureBox == null || _currentBitmap == null || _gridBackground == null) return;
 
-            // 원본 픽셀을 선명하게 보존하기 위한 그래픽스 설정
+            // 현재 뷰포트 계산
+            Rectangle viewport = new Rectangle((int)-pan.X, (int)-pan.Y,
+                                              (int)(PictureBox.Width / zoom),
+                                              (int)(PictureBox.Height / zoom));
+
+            // 렌더링 영역 계산 (뷰포트와 DirtyRect 교차 영역)
+            Rectangle renderArea;
+            lock (_dirtyLock)
+            {
+                renderArea = !_dirtyRect.IsEmpty ?
+                    Rectangle.Intersect(viewport, _dirtyRect) :
+                    viewport;
+            }
+            
+            if (renderArea.IsEmpty) return;
+
+            // 그래픽스 설정
             e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
             e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
-
             e.Graphics.Transform = _transform;
 
-            // 그리드 배경 렌더링
             e.Graphics.DrawImage(_gridBackground, new Point(0, 0));
 
             // 메인 비트맵 렌더링
